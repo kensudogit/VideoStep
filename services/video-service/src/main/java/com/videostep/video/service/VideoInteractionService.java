@@ -35,6 +35,9 @@ public class VideoInteractionService {
     @Autowired
     private VideoFavoriteRepository favoriteRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Transactional
     public boolean toggleLike(Long videoId, Long userId) {
         Video video = videoRepository.findById(videoId)
@@ -56,6 +59,14 @@ public class VideoInteractionService {
             likeRepository.save(like);
             video.setLikeCount(video.getLikeCount() + 1);
             videoRepository.save(video);
+
+            // 通知を作成
+            try {
+                notificationService.createLikeNotification(videoId, userId);
+            } catch (Exception e) {
+                // 通知作成失敗は無視（ログに記録することを推奨）
+            }
+
             return true; // いいね追加
         }
     }
@@ -76,6 +87,28 @@ public class VideoInteractionService {
         comment.setParentCommentId(request.getParentCommentId());
 
         VideoComment saved = commentRepository.save(comment);
+
+        // 通知を作成
+        try {
+            if (request.getParentCommentId() != null) {
+                // 返信の場合
+                VideoComment parentComment = commentRepository.findById(request.getParentCommentId())
+                        .orElse(null);
+                if (parentComment != null) {
+                    notificationService.createReplyNotification(
+                            parentComment.getUserId(),
+                            userId,
+                            videoId,
+                            request.getContent());
+                }
+            } else {
+                // 通常のコメントの場合
+                notificationService.createCommentNotification(videoId, userId, request.getContent());
+            }
+        } catch (Exception e) {
+            // 通知作成失敗は無視（ログに記録することを推奨）
+        }
+
         return VideoMapper.toDto(saved);
     }
 

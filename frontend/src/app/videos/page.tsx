@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import VideoList from '@/components/VideoList'
 import Header from '@/components/Header'
 import CategoryFilter from '@/components/CategoryFilter'
+import VideoSort from '@/components/VideoSort'
 import Pagination from '@/components/Pagination'
 import { useServerPagination } from '@/hooks/useServerPagination'
 import Link from 'next/link'
@@ -14,6 +15,7 @@ export default function VideosPage() {
   const [searchKeyword, setSearchKeyword] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [categories, setCategories] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState('latest')
 
   const fetchVideos = useCallback(async (page: number, size: number) => {
     let url = ''
@@ -36,6 +38,18 @@ export default function VideosPage() {
     throw new Error(data.error || 'Failed to fetch videos')
   }, [searchKeyword, selectedCategory])
 
+  interface Video {
+    id: number
+    title: string
+    description?: string
+    thumbnailUrl?: string
+    viewCount: number
+    userId?: number
+    createdAt: string
+    duration?: number
+    likeCount?: number
+  }
+
   const {
     data: videos,
     loading,
@@ -43,7 +57,7 @@ export default function VideosPage() {
     totalPages,
     goToPage,
     refresh,
-  } = useServerPagination({
+  } = useServerPagination<Video>({
     pageSize: 12,
     fetchFunction: fetchVideos,
   })
@@ -125,20 +139,23 @@ export default function VideosPage() {
             </div>
           )}
 
-          {/* Category Filter */}
-          {categories.length > 0 && (
-            <CategoryFilter
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-            />
-          )}
+          {/* Filters and Sort */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            {categories.length > 0 && (
+              <CategoryFilter
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+              />
+            )}
+            <VideoSort sortBy={sortBy} onSortChange={setSortBy} />
+          </div>
         </div>
 
         {/* Video List */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(12)].map((_, i) => (
+            {[...new Array(12)].map((_, i) => (
               <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden animate-pulse">
                 <div className="w-full h-48 bg-gray-300 dark:bg-gray-700"></div>
                 <div className="p-4 space-y-3">

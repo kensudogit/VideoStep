@@ -25,6 +25,12 @@ spring:
             - Path=/api/videos/**
           filters:
             - StripPrefix=1
+        - id: playlist-service
+          uri: lb://video-service
+          predicates:
+            - Path=/api/playlists/**
+          filters:
+            - StripPrefix=1
         - id: translation-service
           uri: lb://translation-service
           predicates:

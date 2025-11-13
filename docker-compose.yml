@@ -24,7 +24,7 @@ services:
       POSTGRES_USER: videostep
       POSTGRES_PASSWORD: videostep
     ports:
-      - "5434:5432"
+      - "5440:5432"
     volumes:
       - postgres-video-data:/var/lib/postgresql/data
     networks:
@@ -38,7 +38,7 @@ services:
       POSTGRES_USER: videostep
       POSTGRES_PASSWORD: videostep
     ports:
-      - "5435:5432"
+      - "5441:5432"
     volumes:
       - postgres-translation-data:/var/lib/postgresql/data
     networks:
@@ -52,7 +52,7 @@ services:
       POSTGRES_USER: videostep
       POSTGRES_PASSWORD: videostep
     ports:
-      - "5436:5432"
+      - "5442:5432"
     volumes:
       - postgres-editing-data:/var/lib/postgresql/data
     networks:
@@ -66,7 +66,7 @@ services:
       POSTGRES_USER: videostep
       POSTGRES_PASSWORD: videostep
     ports:
-      - "5437:5432"
+      - "5443:5432"
     volumes:
       - postgres-user-data:/var/lib/postgresql/data
     networks:

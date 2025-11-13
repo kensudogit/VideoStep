@@ -7,6 +7,7 @@ import Header from '@/components/Header'
 import VideoActions from '@/components/VideoActions'
 import CommentSection from '@/components/CommentSection'
 import ShareButton from '@/components/ShareButton'
+import AddToPlaylistButton from '@/components/AddToPlaylistButton'
 import RelatedVideos from '@/components/RelatedVideos'
 import VideoPlayer from '@/components/VideoPlayer'
 import Link from 'next/link'
@@ -190,14 +191,17 @@ export default function VideoDetailPage() {
               )}
 
               {/* Video Actions */}
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between flex-wrap gap-4">
                 <VideoActions
                   videoId={video.id}
                   initialLikeCount={video.likeCount || 0}
                   initialIsLiked={false}
                   initialIsFavorited={false}
                 />
-                <ShareButton videoId={video.id} title={video.title} />
+                <div className="flex items-center gap-2">
+                  <AddToPlaylistButton videoId={video.id} />
+                  <ShareButton videoId={video.id} title={video.title} />
+                </div>
               </div>
 
               {(video.category || video.tags) && (

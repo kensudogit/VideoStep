@@ -1,6 +1,7 @@
 package com.videostep.video.controller;
 
 import com.videostep.video.dto.CreateVideoRequest;
+import com.videostep.video.dto.PageResponse;
 import com.videostep.video.dto.VideoDto;
 import com.videostep.video.service.VideoService;
 import jakarta.validation.Valid;

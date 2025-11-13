@@ -1,0 +1,13 @@
+// Root build.gradle - 共通設定
+// 各サービスは独自のbuild.gradleを持つ
+
+allprojects {
+    group = 'com.videostep'
+    version = '1.0.0-SNAPSHOT'
+    
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+

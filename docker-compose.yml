@@ -1,0 +1,201 @@
+# version is obsolete in Docker Compose v2
+
+services:
+  # PostgreSQL Databases
+  postgres-auth:
+    image: postgres:15-alpine
+    container_name: videostep-postgres-auth
+    environment:
+      POSTGRES_DB: videostep_auth
+      POSTGRES_USER: videostep
+      POSTGRES_PASSWORD: videostep
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-auth-data:/var/lib/postgresql/data
+    networks:
+      - videostep-network
+
+  postgres-video:
+    image: postgres:15-alpine
+    container_name: videostep-postgres-video
+    environment:
+      POSTGRES_DB: videostep_video
+      POSTGRES_USER: videostep
+      POSTGRES_PASSWORD: videostep
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-video-data:/var/lib/postgresql/data
+    networks:
+      - videostep-network
+
+  postgres-translation:
+    image: postgres:15-alpine
+    container_name: videostep-postgres-translation
+    environment:
+      POSTGRES_DB: videostep_translation
+      POSTGRES_USER: videostep
+      POSTGRES_PASSWORD: videostep
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-translation-data:/var/lib/postgresql/data
+    networks:
+      - videostep-network
+
+  postgres-editing:
+    image: postgres:15-alpine
+    container_name: videostep-postgres-editing
+    environment:
+      POSTGRES_DB: videostep_editing
+      POSTGRES_USER: videostep
+      POSTGRES_PASSWORD: videostep
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres-editing-data:/var/lib/postgresql/data
+    networks:
+      - videostep-network
+
+  postgres-user:
+    image: postgres:15-alpine
+    container_name: videostep-postgres-user
+    environment:
+      POSTGRES_DB: videostep_user
+      POSTGRES_USER: videostep
+      POSTGRES_PASSWORD: videostep
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres-user-data:/var/lib/postgresql/data
+    networks:
+      - videostep-network
+
+  # Service Registry (Eureka)
+  service-registry:
+    build:
+      context: .
+      dockerfile: ./services/service-registry/Dockerfile
+    container_name: videostep-service-registry
+    ports:
+      - "8761:8761"
+    networks:
+      - videostep-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./services/api-gateway/Dockerfile
+    container_name: videostep-api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - service-registry
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+    networks:
+      - videostep-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./services/auth-service/Dockerfile
+    container_name: videostep-auth-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres-auth
+      - service-registry
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/videostep_auth
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+    networks:
+      - videostep-network
+
+  # Video Service
+  video-service:
+    build:
+      context: .
+      dockerfile: ./services/video-service/Dockerfile
+    container_name: videostep-video-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres-video
+      - service-registry
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-video:5432/videostep_video
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+    networks:
+      - videostep-network
+
+  # Translation Service
+  translation-service:
+    build:
+      context: .
+      dockerfile: ./services/translation-service/Dockerfile
+    container_name: videostep-translation-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - postgres-translation
+      - service-registry
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-translation:5432/videostep_translation
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+    networks:
+      - videostep-network
+
+  # Editing Service
+  editing-service:
+    build:
+      context: .
+      dockerfile: ./services/editing-service/Dockerfile
+    container_name: videostep-editing-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - postgres-editing
+      - service-registry
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-editing:5432/videostep_editing
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+    networks:
+      - videostep-network
+
+  # User Service
+  user-service:
+    build:
+      context: .
+      dockerfile: ./services/user-service/Dockerfile
+    container_name: videostep-user-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      - postgres-user
+      - service-registry
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-user:5432/videostep_user
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+    networks:
+      - videostep-network
+
+volumes:
+  postgres-auth-data:
+  postgres-video-data:
+  postgres-translation-data:
+  postgres-editing-data:
+  postgres-user-data:
+
+networks:
+  videostep-network:
+    driver: bridge
+

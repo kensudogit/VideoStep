@@ -1,0 +1,28 @@
+rootProject.name = 'videostep-microservices'
+
+include 'services:auth-service'
+include 'services:video-service'
+include 'services:translation-service'
+include 'services:editing-service'
+include 'services:user-service'
+include 'services:api-gateway'
+include 'services:service-registry'
+include 'shared:common-lib'
+include 'frontend'
+
+// Enable Gradle build cache
+buildCache {
+    local {
+        enabled = true
+    }
+}
+
+// Dependency resolution management
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+

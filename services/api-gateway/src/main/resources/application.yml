@@ -46,15 +46,24 @@ spring:
       globalcors:
         corsConfigurations:
           '[/**]':
-            allowedOrigins: "*"
+            # サードパーティCookie廃止対応: credentialsを許可する場合は具体的なoriginを指定
+            # 開発環境では "*" を使用可能だが、本番環境では具体的なoriginを指定すること
+            allowedOrigins: 
+              - "*"  # 本番環境では具体的なorigin（例: https://your-frontend-domain.com）を指定
             allowedMethods:
               - GET
               - POST
               - PUT
               - DELETE
               - OPTIONS
-            allowedHeaders: "*"
+              - PATCH
+            allowedHeaders: 
+              - "*"
             allowCredentials: true
+            exposedHeaders:
+              - Set-Cookie
+              - Authorization
+            maxAge: 3600
 
 eureka:
   client:

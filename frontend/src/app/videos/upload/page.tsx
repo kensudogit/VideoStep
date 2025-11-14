@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import Header from '@/components/Header'
+
+export const dynamic = 'force-dynamic'
 
 export default function UploadPage() {
   const router = useRouter()
@@ -19,9 +21,16 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [mounted, setMounted] = useState(false)
 
-  if (!isAuthenticated) {
-    router.push('/auth/login')
+  useEffect(() => {
+    setMounted(true)
+    if (!isAuthenticated) {
+      router.push('/auth/login')
+    }
+  }, [isAuthenticated, router])
+
+  if (!mounted || !isAuthenticated) {
     return null
   }
 

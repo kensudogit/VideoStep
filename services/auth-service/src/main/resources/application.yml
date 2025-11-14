@@ -27,6 +27,13 @@ jwt:
   secret: VideoStepSecretKeyForJWTTokenGeneration12345678901234567890
   expiration: 86400000
 
+# Cookie設定（サードパーティCookie廃止対応）
+app:
+  cookie:
+    domain: ""  # 空の場合は現在のドメインを使用
+    secure: true  # HTTPS環境ではtrue、開発環境ではfalseに設定可能
+    same-site: None  # None, Lax, Strict のいずれか（サードパーティCookieにはNoneが必要）
+
 logging:
   level:
     com.videostep: DEBUG

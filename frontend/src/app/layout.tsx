@@ -8,6 +8,10 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'VideoStep - 動画で人々の知を未来と世界へ繋ぐ',
   description: '熟練技術者のノウハウ継承や外国人教育を支援する動画共有プラットフォーム',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({

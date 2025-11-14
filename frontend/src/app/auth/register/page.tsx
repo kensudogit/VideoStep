@@ -23,6 +23,7 @@ export default function RegisterPage() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/auth/register`, {
         method: 'POST',
+        credentials: 'include', // サードパーティCookie廃止対応: Cookieを自動送信
         headers: {
           'Content-Type': 'application/json',
         },

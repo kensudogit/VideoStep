@@ -14,6 +14,7 @@ export async function apiRequest<T>(
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
+      credentials: 'include', // サードパーティCookie廃止対応: Cookieを自動送信
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -100,6 +101,7 @@ export async function uploadFile(
     })
 
     xhr.open('POST', `${API_BASE_URL}${endpoint}`)
+    xhr.withCredentials = true // サードパーティCookie廃止対応: Cookieを自動送信
     xhr.setRequestHeader('Authorization', `Bearer ${token}`)
     xhr.setRequestHeader('X-User-Id', userId.toString())
     xhr.send(formData)

@@ -1,6 +1,9 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "services/service-registry/Dockerfile"
+buildContext = "."
+# Root Directoryは空（設定しない）
+# Build Contextを明示的にルートディレクトリ（.）に設定
 
 [deploy]
 startCommand = "java -jar app.jar"

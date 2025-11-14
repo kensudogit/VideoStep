@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "services/service-registry/Dockerfile"
 
 [deploy]
 startCommand = "java -jar app.jar"

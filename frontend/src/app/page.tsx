@@ -6,9 +6,28 @@ import { useAuthStore } from '@/store/authStore'
 import VideoList from '@/components/VideoList'
 import Header from '@/components/Header'
 
+interface Video {
+  id: number
+  title: string
+  description?: string
+  thumbnailUrl?: string
+  videoUrl?: string
+  category?: string
+  tags?: string[]
+  views?: number
+  likes?: number
+  viewCount: number
+  likeCount?: number
+  duration?: number
+  createdAt: string
+  userId?: number
+  userName?: string
+  isPublic?: boolean
+}
+
 export default function Home() {
   const { isAuthenticated } = useAuthStore()
-  const [videos, setVideos] = useState([])
+  const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -19,11 +38,12 @@ export default function Home() {
     try {
       setLoading(true)
       const { apiRequest } = await import('@/utils/api')
-      const data = await apiRequest<any[]>('/api/videos/public?page=0&size=8')
+      const data = await apiRequest<Video[]>('/api/videos/public?page=0&size=8')
       if (data.success && data.data) {
         // サムネイルがない動画にサンプル画像を設定
-        const videosWithThumbnails = data.data.map((video: any) => ({
+        const videosWithThumbnails = data.data.map((video) => ({
           ...video,
+          viewCount: video.viewCount ?? video.views ?? 0,
           // サムネイルがない場合は、後でVideoCardコンポーネントで自動的に設定される
         }))
         setVideos(videosWithThumbnails)

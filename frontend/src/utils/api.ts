@@ -7,6 +7,12 @@ export interface ApiResponse<T> {
   data?: T
   error?: string
   message?: string
+  pagination?: {
+    page: number
+    size: number
+    total: number
+    totalPages: number
+  }
 }
 
 // Check if API is available

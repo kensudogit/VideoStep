@@ -135,9 +135,32 @@ allowCredentials: true
 2. `same-site: None`が設定されているか確認
 3. ブラウザの開発者ツールでCookieを確認
 
+## Vercelデプロイ環境での対応
+
+### 現在の状態
+
+- ✅ フロントエンドはVercelにデプロイ済み
+- ✅ Mockデータを使用しているため、バックエンドAPIは不要
+- ✅ バックエンドAPI接続時に備えて、Cookie対応を実装済み
+
+### バックエンドAPI接続時の設定
+
+バックエンドAPIを接続する場合、以下の設定が必要です：
+
+1. **バックエンドAPIのCORS設定**
+   - VercelのフロントエンドURLを`allowedOrigins`に追加
+   - `allowCredentials: true`を設定
+
+2. **Cookie設定**
+   - `secure: true`（HTTPS環境では必須）
+   - `same-site: None`（サードパーティCookie対応）
+
+詳細は`VERCEL_COOKIE_COMPLIANCE.md`を参照してください。
+
 ## 参考資料
 
 - [MDN: SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite)
 - [Chrome: SameSite Cookie Updates](https://www.chromium.org/updates/same-site)
 - [Spring Security: CORS Configuration](https://docs.spring.io/spring-security/reference/servlet/integrations/cors.html)
+- [Vercel: Environment Variables](https://vercel.com/docs/concepts/projects/environment-variables)
 

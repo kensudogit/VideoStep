@@ -1,8 +1,11 @@
 # Vercelデプロイ手順（Mockデータ使用）
 
-## ✅ 準備完了
+## ✅ デプロイ完了
 
-Mockデータを使用した完全公開モードでのデプロイ準備が完了しました。
+Mockデータを使用した完全公開モードでのデプロイが成功しました！
+
+- **本番URL**: https://frontend-n22egn6e9-kensudogits-projects.vercel.app
+- **ステータス**: デプロイ成功
 
 ## 実装内容
 

@@ -32,7 +32,7 @@ export default function VideosPage() {
     if (data.success && data.data) {
       return {
         data: data.data,
-        pagination: data.pagination || { page, size, total: data.data.length, totalPages: 1 },
+        pagination: (data as any).pagination || { page, size, total: data.data.length, totalPages: 1 },
       }
     }
     throw new Error(data.error || 'Failed to fetch videos')

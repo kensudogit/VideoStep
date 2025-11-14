@@ -18,21 +18,21 @@ export default function VideosPage() {
   const [sortBy, setSortBy] = useState('latest')
 
   const fetchVideos = useCallback(async (page: number, size: number) => {
-    let url = ''
+    const { apiRequest } = await import('@/utils/api')
+    let endpoint = ''
     if (selectedCategory) {
-      url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/videos/category/${encodeURIComponent(selectedCategory)}?page=${page}&size=${size}`
+      endpoint = `/api/videos/category/${encodeURIComponent(selectedCategory)}?page=${page}&size=${size}`
     } else if (searchKeyword) {
-      url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/videos/search?keyword=${encodeURIComponent(searchKeyword)}&page=${page}&size=${size}`
+      endpoint = `/api/videos/search?keyword=${encodeURIComponent(searchKeyword)}&page=${page}&size=${size}`
     } else {
-      url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/videos/public?page=${page}&size=${size}`
+      endpoint = `/api/videos/public?page=${page}&size=${size}`
     }
     
-    const response = await fetch(url)
-    const data = await response.json()
-    if (data.success) {
+    const data = await apiRequest<any[]>(endpoint)
+    if (data.success && data.data) {
       return {
         data: data.data,
-        pagination: data.pagination,
+        pagination: data.pagination || { page, size, total: data.data.length, totalPages: 1 },
       }
     }
     throw new Error(data.error || 'Failed to fetch videos')

@@ -18,19 +18,22 @@ export default function Home() {
   const fetchVideos = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/videos/public?page=0&size=8`)
-      const data = await response.json()
-      if (data.success) {
+      const { apiRequest } = await import('@/utils/api')
+      const data = await apiRequest<any[]>('/api/videos/public?page=0&size=8')
+      if (data.success && data.data) {
         // サムネイルがない動画にサンプル画像を設定
         const videosWithThumbnails = data.data.map((video: any) => ({
           ...video,
           // サムネイルがない場合は、後でVideoCardコンポーネントで自動的に設定される
         }))
         setVideos(videosWithThumbnails)
+      } else {
+        // Fallback to empty array if no data
+        setVideos([])
       }
     } catch (error) {
       console.error('Failed to fetch videos:', error)
-      // エラー時はサンプルデータを表示
+      // エラー時は空配列を表示（apiRequestがmockデータを返す）
       setVideos([])
     } finally {
       setLoading(false)

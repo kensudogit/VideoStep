@@ -47,9 +47,9 @@ export default function VideoDetailPage() {
   const fetchVideo = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/videos/${params.id}`)
-      const data = await response.json()
-      if (data.success) {
+      const { apiRequest } = await import('@/utils/api')
+      const data = await apiRequest<any>(`/api/videos/${params.id}`)
+      if (data.success && data.data) {
         setVideo(data.data)
       } else {
         setError('動画が見つかりませんでした')

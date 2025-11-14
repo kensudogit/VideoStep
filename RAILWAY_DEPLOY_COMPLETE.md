@@ -1,3 +1,4 @@
+
 # Railway 完全公開モードデプロイガイド
 
 ## 概要
@@ -64,12 +65,18 @@ railway up
 
 #### Railwayダッシュボードを使用する場合
 
+**重要**: Root Directoryの設定が必須です。設定しないと「Dockerfile does not exist」エラーが発生します。
+
 1. プロジェクトで "New Service" → "GitHub Repo" を選択
-2. 同じリポジトリを選択
-3. "Settings" → "Root Directory" を `services/service-registry` に設定
-4. "Settings" → "Build Command" を確認（自動検出される）
-5. "Settings" → "Start Command" を確認
-6. "Deploy" をクリック
+2. 同じリポジトリ（VideoStep）を選択
+3. **"Settings" タブを開く**
+4. **"Root Directory" フィールドを見つける**（"Source" セクション内）
+5. **Root Directory に `services/service-registry` を入力**（重要！先頭の `/` は付けない）
+6. "Settings" → "Build Command" を確認（自動検出される、または空欄でOK）
+7. "Settings" → "Start Command" を確認（自動検出される、または空欄でOK）
+8. "Deploy" をクリック
+
+**注意**: Root Directoryを設定しないと、RailwayはリポジトリのルートディレクトリでDockerfileを探しますが、Dockerfileは `services/service-registry/` ディレクトリにあるため、エラーが発生します。
 
 **環境変数**:
 - なし（デフォルト設定で動作）
@@ -128,9 +135,13 @@ railway up
 
 #### Railwayダッシュボードを使用する場合
 
+**重要**: Root Directoryの設定が必須です。
+
 1. "New Service" → "GitHub Repo" を選択
-2. "Settings" → "Root Directory" を `services/auth-service` に設定
-3. "Variables" タブで環境変数を追加：
+2. 同じリポジトリ（VideoStep）を選択
+3. **"Settings" タブを開く**
+4. **"Root Directory" フィールドに `services/auth-service` を入力**（重要！）
+5. "Variables" タブで環境変数を追加：
 
 ```
 SPRING_DATASOURCE_URL=${{videostep-auth-db.DATABASE_URL}}
@@ -160,9 +171,13 @@ railway up
 
 #### Railwayダッシュボードを使用する場合
 
+**重要**: Root Directoryの設定が必須です。
+
 1. "New Service" → "GitHub Repo" を選択
-2. "Settings" → "Root Directory" を `services/video-service` に設定
-3. "Variables" タブで環境変数を追加：
+2. 同じリポジトリ（VideoStep）を選択
+3. **"Settings" タブを開く**
+4. **"Root Directory" フィールドに `services/video-service` を入力**（重要！）
+5. "Variables" タブで環境変数を追加：
 
 ```
 SPRING_DATASOURCE_URL=${{videostep-video-db.DATABASE_URL}}
@@ -189,9 +204,13 @@ railway up
 
 #### Railwayダッシュボードを使用する場合
 
+**重要**: Root Directoryの設定が必須です。
+
 1. "New Service" → "GitHub Repo" を選択
-2. "Settings" → "Root Directory" を `services/api-gateway` に設定
-3. "Variables" タブで環境変数を追加：
+2. 同じリポジトリ（VideoStep）を選択
+3. **"Settings" タブを開く**
+4. **"Root Directory" フィールドに `services/api-gateway` を入力**（重要！）
+5. "Variables" タブで環境変数を追加：
 
 ```
 EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
@@ -306,6 +325,29 @@ EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
 ## トラブルシューティング
 
 ### ビルドエラー
+
+#### エラー: "Dockerfile `Dockerfile` does not exist"
+
+**原因**: RailwayがリポジトリのルートディレクトリでDockerfileを探していますが、Dockerfileは各サービスのディレクトリ（`services/service-registry/`など）にあります。
+
+**解決方法**:
+1. Railwayダッシュボードで該当サービスの "Settings" タブを開く
+2. "Root Directory" フィールドを確認
+3. 正しいRoot Directoryを設定：
+   - Service Registry: `services/service-registry`
+   - Auth Service: `services/auth-service`
+   - Video Service: `services/video-service`
+   - API Gateway: `services/api-gateway`
+   - Translation Service: `services/translation-service`
+   - Editing Service: `services/editing-service`
+   - User Service: `services/user-service`
+4. "Save" をクリック
+5. 再デプロイを実行
+
+**確認方法**:
+- Root Directoryを設定した後、ビルドログで "Building Dockerfile from services/service-registry/Dockerfile" のようなメッセージが表示されることを確認
+
+#### その他のビルドエラー
 
 1. **Dockerfileの確認**
    - 各サービスのDockerfileが正しく設定されているか確認

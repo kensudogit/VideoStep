@@ -1,0 +1,14 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "services/editing-service/Dockerfile"
+buildContext = "."
+# Root Directoryは空（設定しない）
+# Build Contextを明示的にルートディレクトリ（.）に設定
+
+[deploy]
+startCommand = "java -jar app.jar"
+healthcheckPath = "/actuator/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+

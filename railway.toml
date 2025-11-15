@@ -1,11 +1,7 @@
 # ルートディレクトリのrailway.toml
 # 注意: 各サービスは独自のrailway.tomlを持つべきです
 # このファイルは、全体的なデフォルト設定として使用されます
-
-[build]
-builder = "DOCKERFILE"
-# dockerfilePathとbuildContextは各サービスのrailway.tomlで設定
-# ルートディレクトリでは設定しない
+# buildセクションは各サービスのrailway.tomlで設定するため、ここでは設定しない
 
 [deploy]
 restartPolicyType = "ON_FAILURE"

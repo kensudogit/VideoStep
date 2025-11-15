@@ -2,6 +2,7 @@
 builder = "DOCKERFILE"
 dockerfilePath = "services/auth-service/Dockerfile"
 buildContext = "."
+watchPatterns = ["services/auth-service/**"]
 # Root Directoryは空（設定しない）
 # Build Contextを明示的にルートディレクトリ（.）に設定
 

@@ -3,6 +3,8 @@ FROM gradle:8.5-jdk21 AS build
 WORKDIR /workspace
 # Copy root Gradle files
 COPY build.gradle settings.gradle ./
+# Copy shared common-lib (required by settings.gradle)
+COPY shared/common-lib/build.gradle ./shared/common-lib/
 # Copy service-specific files
 COPY services/auth-service/build.gradle ./services/auth-service/
 COPY services/auth-service/src ./services/auth-service/src

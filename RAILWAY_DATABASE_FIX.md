@@ -4,95 +4,44 @@
 
 ```
 FATAL: role "videostep" does not exist
+Connection to localhost:5432 refused
 ```
 
-RailwayのPostgreSQLデータベースには、デフォルトで`postgres`ユーザーが作成されますが、`videostep`ユーザーは存在しません。
+RailwayのPostgreSQLデータベースには、デフォルトで`postgres`ユーザーが作成されますが、`videostep`ユーザーは存在しません。また、Railwayの`DATABASE_URL`は`postgresql://user:password@host:port/database`形式ですが、Spring BootのJDBC URLは`jdbc:postgresql://host:port/database`形式です。
 
 ## 解決方法
 
-### ✅ 推奨: Railway環境変数で`SPRING_DATASOURCE_URL`を設定
+### ✅ 自動変換機能（実装済み）
 
-Railwayの`DATABASE_URL`は`postgresql://user:password@host:port/database`形式ですが、Spring BootのJDBC URLは`jdbc:postgresql://host:port/database`形式です。
+すべてのサービスに`DatabaseEnvironmentPostProcessor`と`DatabaseConfig`を追加しました。これにより、Railwayの`DATABASE_URL`が自動的にJDBC URL形式に変換され、`DataSource`が作成されます。
 
-**解決策**: Railwayの環境変数で`SPRING_DATASOURCE_URL`を設定し、`DATABASE_URL`をJDBC URL形式に変換します。
+**実装内容**:
+1. **`DatabaseEnvironmentPostProcessor`**: Spring Boot起動時に`DATABASE_URL`を読み取り、`postgresql://`形式を`jdbc:postgresql://`形式に変換して`SPRING_DATASOURCE_URL`として設定
+2. **`DatabaseConfig`**: `DATABASE_URL`からユーザー名とパスワードを抽出し、`DataSource`を直接作成
 
-### ステップ1: Railwayダッシュボードで環境変数を設定
+**注意**: Railwayで各サービスに`DATABASE_URL`環境変数が自動的に設定されている必要があります。
 
-各サービスのRailway環境変数で、以下のように設定してください：
+### ステップ1: Railwayでデータベースサービスを各サービスに接続
+
+各サービスにPostgreSQLデータベースサービスを接続してください：
 
 1. Railwayダッシュボードで各サービス（例: `auth-service`）を開く
 2. **"Variables"** タブを開く
-3. **"New Variable"** をクリック
-4. 以下の環境変数を追加：
-
-   **Auth Service:**
-   ```
-   SPRING_DATASOURCE_URL=${{videostep-auth-db.DATABASE_URL}}
-   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-   OPENAI_API_KEY=your-api-key
-   ```
-
-   **Video Service:**
-   ```
-   SPRING_DATASOURCE_URL=${{videostep-video-db.DATABASE_URL}}
-   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-   OPENAI_API_KEY=your-api-key
-   ```
-
-   **Translation Service:**
-   ```
-   SPRING_DATASOURCE_URL=${{videostep-translation-db.DATABASE_URL}}
-   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-   OPENAI_API_KEY=your-api-key
-   ```
-
-   **Editing Service:**
-   ```
-   SPRING_DATASOURCE_URL=${{videostep-editing-db.DATABASE_URL}}
-   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-   OPENAI_API_KEY=your-api-key
-   ```
-
-   **User Service:**
-   ```
-   SPRING_DATASOURCE_URL=${{videostep-user-db.DATABASE_URL}}
-   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-   OPENAI_API_KEY=your-api-key
-   ```
+3. データベースサービスを接続（**"Connect"** ボタンをクリック）
+4. これにより、`DATABASE_URL`環境変数が自動的に設定されます
 
 **重要**: 
-- `${{service-name.DATABASE_URL}}` の形式で、データベースサービスの`DATABASE_URL`を参照します
-- Railwayの`DATABASE_URL`は`postgresql://user:password@host:port/database`形式ですが、`application.yml`で`SPRING_DATASOURCE_URL`が設定されていれば、その値が使用されます
-- Railwayの`DATABASE_URL`には既に正しいユーザー名とパスワードが含まれているため、`username`と`password`は環境変数から自動的に読み込まれます
+- Railwayの`DATABASE_URL`は`postgresql://user:password@host:port/database`形式で自動的に設定されます
+- `DatabaseEnvironmentPostProcessor`が自動的に`jdbc:postgresql://`形式に変換します
+- `DatabaseConfig`が`DATABASE_URL`からユーザー名とパスワードを抽出します
 
-### ステップ2: DATABASE_URLをJDBC URL形式に変換
+### ステップ2: その他の環境変数を設定（必要に応じて）
 
-Railwayの`DATABASE_URL`は`postgresql://`で始まるため、`jdbc:postgresql://`形式に変換する必要があります。
-
-**方法1: Railway環境変数で変換（推奨）**
-
-各サービスの環境変数に以下を追加：
+各サービスの環境変数で、以下の設定を追加してください：
 
 ```
-SPRING_DATASOURCE_URL=jdbc:${{videostep-auth-db.DATABASE_URL}}
-```
-
-ただし、Railwayの環境変数では文字列置換ができないため、**方法2**を使用してください。
-
-**方法2: 環境変数で直接JDBC URL形式を設定**
-
-Railwayの`DATABASE_URL`を手動でJDBC URL形式に変換して設定：
-
-1. データベースサービスの**"Variables"**タブで`DATABASE_URL`を確認
-2. `postgresql://`を`jdbc:postgresql://`に置き換えた値を`SPRING_DATASOURCE_URL`に設定
-
-例：
-```
-# 元のDATABASE_URL
-postgresql://postgres:password@host:port/database
-
-# SPRING_DATASOURCE_URLに設定する値
-jdbc:postgresql://postgres:password@host:port/database
+EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+OPENAI_API_KEY=your-api-key
 ```
 
 ### ステップ3: サービスを再デプロイ
@@ -111,54 +60,70 @@ jdbc:postgresql://postgres:password@host:port/database
 2. **"Logs"** を確認
 3. 以下のようなメッセージが表示されれば成功：
    ```
+   DatabaseEnvironmentPostProcessor: DATABASE_URL = postgresql://...
+   DatabaseEnvironmentPostProcessor: Converting to JDBC URL = jdbc:postgresql://...
+   DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL set successfully
+   DatabaseConfig: Using DATABASE_URL = jdbc:postgresql://...
    HikariPool-1 - Starting...
    HikariPool-1 - Start completed.
    ```
 
-## 簡単な解決方法（推奨）
+## 実装の詳細
 
-Railwayの`DATABASE_URL`をそのまま使用する場合、Spring Bootが自動的に認識しますが、`application.yml`で明示的に設定されている場合は、環境変数で上書きする必要があります。
+### DatabaseEnvironmentPostProcessor
 
-**最も簡単な方法**:
+Spring Boot起動時に実行され、`DATABASE_URL`をJDBC URL形式に変換します：
 
-各サービスの環境変数で、Railwayの`DATABASE_URL`をJDBC URL形式に変換して設定：
+- `META-INF/spring.factories`に登録されています
+- `System.getenv("DATABASE_URL")`から環境変数を読み取ります
+- `postgresql://`形式を`jdbc:postgresql://`形式に変換します
+- `SPRING_DATASOURCE_URL`として環境変数に設定します
 
-```
-SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:password@host:port/database
-```
+### DatabaseConfig
 
-ただし、`DATABASE_URL`から手動で変換する必要があります。
+`DataSource` Beanを作成し、`DATABASE_URL`から接続情報を抽出します：
 
-**より簡単な方法**:
-
-Railway CLIを使用して環境変数を設定：
-
-```bash
-# DATABASE_URLを取得
-railway variables get DATABASE_URL --service videostep-auth-db
-
-# JDBC URL形式に変換して設定
-railway variables set SPRING_DATASOURCE_URL="jdbc:postgresql://postgres:password@host:port/database" --service auth-service
-```
+- `@Primary`アノテーションでSpring Bootの自動設定を上書きします
+- `DATABASE_URL`が設定されている場合、それを優先して使用します
+- `DATABASE_URL`からユーザー名とパスワードを抽出します
+- `DATABASE_URL`が設定されていない場合、`application.yml`のデフォルト値を使用します
 
 ## トラブルシューティング
 
-### エラー: DATABASE_URL形式が正しくない
+### エラー: DATABASE_URLが設定されていない
 
-**解決方法**: Railwayの`DATABASE_URL`を`jdbc:postgresql://`形式に変換して`SPRING_DATASOURCE_URL`に設定してください。
+**解決方法**: 
+1. Railwayダッシュボードで各サービスを開く
+2. **"Variables"** タブで`DATABASE_URL`が設定されているか確認
+3. 設定されていない場合、データベースサービスを接続してください
 
-### エラー: データベースサービス名が間違っている
+### エラー: localhost:5432に接続しようとしている
 
-**解決方法**: Railwayダッシュボードで、データベースサービスの実際の名前を確認してください。`${{service-name.DATABASE_URL}}`の`service-name`は、データベースサービスの正確な名前である必要があります。
+**解決方法**: 
+1. ログで`DatabaseEnvironmentPostProcessor`が実行されているか確認
+2. `DATABASE_URL`が正しく読み取られているか確認
+3. `spring.factories`ファイルが正しく配置されているか確認（`META-INF/spring.factories`）
 
 ### エラー: 認証に失敗する
 
-**解決方法**: Railwayの`DATABASE_URL`には既に正しいユーザー名とパスワードが含まれています。`SPRING_DATASOURCE_URL`に設定する際は、`DATABASE_URL`の値をそのまま使用し、`postgresql://`を`jdbc:postgresql://`に置き換えてください。
+**解決方法**: 
+1. `DATABASE_URL`にユーザー名とパスワードが含まれているか確認
+2. ログで`DatabaseConfig`が正しくユーザー名とパスワードを抽出しているか確認
+3. Railwayのデータベースサービスの認証情報を確認
 
 ## 確認事項チェックリスト
 
 - [ ] 各データベースサービスが作成されている
-- [ ] 各サービスの環境変数に`SPRING_DATASOURCE_URL`が設定されている（JDBC URL形式）
-- [ ] データベースサービス名が正しい（`${{service-name.DATABASE_URL}}`）
+- [ ] 各サービスにデータベースサービスが接続されている（`DATABASE_URL`環境変数が自動設定される）
+- [ ] `DatabaseEnvironmentPostProcessor`が実行されている（ログで確認）
+- [ ] `DatabaseConfig`が`DATABASE_URL`を使用している（ログで確認）
 - [ ] サービスが再デプロイされている
 - [ ] ログでデータベース接続が成功している
+
+## ファイル構成
+
+以下のファイルが各サービスに追加されています：
+
+- `src/main/java/com/videostep/{service}/config/DatabaseEnvironmentPostProcessor.java`
+- `src/main/java/com/videostep/{service}/config/DatabaseConfig.java`
+- `src/main/resources/META-INF/spring.factories`

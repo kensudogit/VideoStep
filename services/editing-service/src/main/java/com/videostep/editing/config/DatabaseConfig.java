@@ -34,6 +34,7 @@ public class DatabaseConfig {
                 config.setDriverClassName("org.postgresql.Driver");
                 
                 // DATABASE_URLからユーザー名とパスワードを抽出
+                // postgresql://user:password@host:port/database
                 try {
                     String urlWithoutPrefix = databaseUrl.substring("postgresql://".length());
                     int atIndex = urlWithoutPrefix.indexOf('@');

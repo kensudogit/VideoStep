@@ -5,9 +5,9 @@ spring:
   application:
     name: video-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/videostep_video}
-    username: videostep
-    password: videostep
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/videostep_video}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:videostep}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:videostep}}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

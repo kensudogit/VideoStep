@@ -16,18 +16,27 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        String databaseUrl = environment.getProperty("DATABASE_URL");
+        // システム環境変数から直接読み取る
+        String databaseUrl = System.getenv("DATABASE_URL");
+        
+        System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL = " + (databaseUrl != null ? databaseUrl.substring(0, Math.min(50, databaseUrl.length())) + "..." : "null"));
         
         if (databaseUrl != null && !databaseUrl.isEmpty() && !databaseUrl.startsWith("jdbc:")) {
             if (databaseUrl.startsWith("postgresql://")) {
                 String jdbcUrl = "jdbc:" + databaseUrl;
+                
+                System.out.println("DatabaseEnvironmentPostProcessor: Converting to JDBC URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
                 
                 Map<String, Object> properties = new HashMap<>();
                 properties.put("SPRING_DATASOURCE_URL", jdbcUrl);
                 
                 MapPropertySource propertySource = new MapPropertySource("database-url-converter", properties);
                 environment.getPropertySources().addFirst(propertySource);
+                
+                System.out.println("DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL set successfully");
             }
+        } else {
+            System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL not set or already in JDBC format");
         }
     }
 }

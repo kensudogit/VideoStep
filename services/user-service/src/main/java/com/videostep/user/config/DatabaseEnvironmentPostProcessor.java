@@ -16,7 +16,8 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        String databaseUrl = environment.getProperty("DATABASE_URL");
+        // システム環境変数から直接読み取る
+        String databaseUrl = System.getenv("DATABASE_URL");
         
         if (databaseUrl != null && !databaseUrl.isEmpty() && !databaseUrl.startsWith("jdbc:")) {
             if (databaseUrl.startsWith("postgresql://")) {

@@ -39,3 +39,6 @@ logging:
     com.videostep: DEBUG
     org.springframework.security: DEBUG
 
+openai:
+  api:
+    key: ${OPENAI_API_KEY}

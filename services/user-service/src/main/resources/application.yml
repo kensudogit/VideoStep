@@ -27,3 +27,6 @@ logging:
   level:
     com.videostep: DEBUG
 
+openai:
+  api:
+    key: ${OPENAI_API_KEY}

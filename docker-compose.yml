@@ -117,6 +117,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/videostep_auth
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
       - videostep-network
 
@@ -134,6 +135,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-video:5432/videostep_video
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
       - videostep-network
 
@@ -151,6 +153,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-translation:5432/videostep_translation
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
       - videostep-network
 
@@ -168,6 +171,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-editing:5432/videostep_editing
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
       - videostep-network
 
@@ -185,6 +189,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-user:5432/videostep_user
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
       - videostep-network
 

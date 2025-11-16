@@ -5,7 +5,7 @@ spring:
   application:
     name: user-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/videostep_user}}
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL}}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:${PGUSER:videostep}}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:${PGPASSWORD:videostep}}}
     driver-class-name: org.postgresql.Driver

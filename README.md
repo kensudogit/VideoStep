@@ -187,6 +187,23 @@ npm run dev
 - `GET /api/users/{userId}/profile` - ユーザープロフィール取得
 - `PUT /api/users/{userId}/profile` - ユーザープロフィール更新
 
+## Railway セットアップ
+
+Railwayでのデプロイメントとデータベース設定については、以下のドキュメントを参照してください：
+
+- **[RAILWAY_SETUP_INDEX.md](./RAILWAY_SETUP_INDEX.md)** - Railwayセットアップ インデックス（推奨）
+- **[RAILWAY_QUICK_SETUP.md](./RAILWAY_QUICK_SETUP.md)** - 5分で完了する設定手順
+- **[SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md)** - セットアップチェックリスト
+- **[RAILWAY_ENV_SETUP_URGENT.md](./RAILWAY_ENV_SETUP_URGENT.md)** - 環境変数エラー対応ガイド
+
+### クイックスタート
+
+1. RailwayダッシュボードでPostgreSQLデータベースサービスを作成
+2. 各サービス（video-service, editing-service, auth-service, user-service, translation-service）にデータベースを接続
+3. 各サービスが自動的に再デプロイされます
+
+詳細は **[RAILWAY_QUICK_SETUP.md](./RAILWAY_QUICK_SETUP.md)** を参照してください。
+
 ## デプロイメント
 
 ### Terraformによるインフラ構築

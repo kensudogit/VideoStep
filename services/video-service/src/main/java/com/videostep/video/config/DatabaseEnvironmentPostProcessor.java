@@ -19,7 +19,13 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
         // システム環境変数から直接読み取る
         String databaseUrl = System.getenv("DATABASE_URL");
         
+        // デバッグ情報を出力
+        System.out.println("DatabaseEnvironmentPostProcessor: Starting environment post-processing");
         System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL = " + (databaseUrl != null ? databaseUrl.substring(0, Math.min(50, databaseUrl.length())) + "..." : "null"));
+        
+        // SPRING_DATASOURCE_URLも確認
+        String springDatasourceUrl = System.getenv("SPRING_DATASOURCE_URL");
+        System.out.println("DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL = " + (springDatasourceUrl != null ? springDatasourceUrl.substring(0, Math.min(50, springDatasourceUrl.length())) + "..." : "null"));
         
         if (databaseUrl != null && !databaseUrl.isEmpty() && !databaseUrl.startsWith("jdbc:")) {
             if (databaseUrl.startsWith("postgresql://")) {
@@ -34,9 +40,17 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 environment.getPropertySources().addFirst(propertySource);
                 
                 System.out.println("DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL set successfully");
+            } else {
+                System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL does not start with 'postgresql://', format: " + (databaseUrl.length() > 50 ? databaseUrl.substring(0, 50) + "..." : databaseUrl));
             }
         } else {
-            System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL not set or already in JDBC format");
+            if (databaseUrl == null || databaseUrl.isEmpty()) {
+                System.out.println("DatabaseEnvironmentPostProcessor: WARNING - DATABASE_URL is not set!");
+                System.out.println("DatabaseEnvironmentPostProcessor: Please connect a PostgreSQL database service in Railway or set DATABASE_URL environment variable");
+                System.out.println("DatabaseEnvironmentPostProcessor: Falling back to application.yml default (localhost:5432)");
+            } else {
+                System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL already in JDBC format or empty");
+            }
         }
     }
 }

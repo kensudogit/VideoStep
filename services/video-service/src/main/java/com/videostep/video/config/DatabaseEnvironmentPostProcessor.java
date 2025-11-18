@@ -47,12 +47,55 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             }
             
             // URLから認証情報を抽出（JDBC URLに認証情報が含まれている場合）
+            boolean hasCredentials = false;
             try {
                 parseJdbcUrl(springDatasourceUrl, properties);
+                // 認証情報が抽出されたかチェック
+                hasCredentials = properties.containsKey("SPRING_DATASOURCE_USERNAME") && 
+                                 properties.containsKey("SPRING_DATASOURCE_PASSWORD");
+                if (hasCredentials) {
+                    System.out.println("DatabaseEnvironmentPostProcessor: Credentials extracted from SPRING_DATASOURCE_URL");
+                } else {
+                    System.out.println("DatabaseEnvironmentPostProcessor: No credentials in SPRING_DATASOURCE_URL, checking DATABASE_URL");
+                }
             } catch (Exception e) {
                 System.err.println("DatabaseEnvironmentPostProcessor: Warning - Failed to parse JDBC URL: " + e.getMessage());
                 // パースに失敗した場合は、そのまま使用
                 properties.put("SPRING_DATASOURCE_URL", springDatasourceUrl);
+            }
+            
+            // SPRING_DATASOURCE_URLに認証情報が含まれていない場合、DATABASE_URLから取得を試みる
+            if (!hasCredentials) {
+                String databaseUrl = System.getenv("DATABASE_URL");
+                if (databaseUrl == null || databaseUrl.isEmpty()) {
+                    databaseUrl = environment.getProperty("DATABASE_URL");
+                }
+                
+                if (databaseUrl != null && !databaseUrl.isEmpty()) {
+                    System.out.println("DatabaseEnvironmentPostProcessor: Attempting to extract credentials from DATABASE_URL");
+                    try {
+                        Map<String, Object> dbUrlProperties = new HashMap<>();
+                        if (databaseUrl.startsWith("jdbc:")) {
+                            parseJdbcUrl(databaseUrl, dbUrlProperties);
+                        } else if (databaseUrl.startsWith("postgresql://")) {
+                            parsePostgresUrl(databaseUrl, dbUrlProperties);
+                        }
+                        
+                        // DATABASE_URLから認証情報を取得
+                        if (dbUrlProperties.containsKey("SPRING_DATASOURCE_USERNAME")) {
+                            properties.put("SPRING_DATASOURCE_USERNAME", dbUrlProperties.get("SPRING_DATASOURCE_USERNAME"));
+                            System.out.println("DatabaseEnvironmentPostProcessor: Username extracted from DATABASE_URL");
+                        }
+                        if (dbUrlProperties.containsKey("SPRING_DATASOURCE_PASSWORD")) {
+                            properties.put("SPRING_DATASOURCE_PASSWORD", dbUrlProperties.get("SPRING_DATASOURCE_PASSWORD"));
+                            System.out.println("DatabaseEnvironmentPostProcessor: Password extracted from DATABASE_URL");
+                        }
+                    } catch (Exception e) {
+                        System.err.println("DatabaseEnvironmentPostProcessor: Warning - Failed to extract credentials from DATABASE_URL: " + e.getMessage());
+                    }
+                } else {
+                    System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL not available for credential extraction");
+                }
             }
             
             MapPropertySource propertySource = new MapPropertySource("database-url-converter", properties);

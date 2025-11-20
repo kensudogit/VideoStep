@@ -90,18 +90,35 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                             properties.put("SPRING_DATASOURCE_PASSWORD", dbUrlProperties.get("SPRING_DATASOURCE_PASSWORD"));
                             System.out.println("DatabaseEnvironmentPostProcessor: Password extracted from DATABASE_URL");
                         }
+                        
+                        // DATABASE_URLから完全なJDBC URLも取得（SPRING_DATASOURCE_URLを上書き）
+                        if (dbUrlProperties.containsKey("SPRING_DATASOURCE_URL")) {
+                            properties.put("SPRING_DATASOURCE_URL", dbUrlProperties.get("SPRING_DATASOURCE_URL"));
+                            System.out.println("DatabaseEnvironmentPostProcessor: Using JDBC URL from DATABASE_URL");
+                        }
                     } catch (Exception e) {
                         System.err.println("DatabaseEnvironmentPostProcessor: Warning - Failed to extract credentials from DATABASE_URL: " + e.getMessage());
+                        e.printStackTrace();
                     }
                 } else {
                     System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL not available for credential extraction");
+                    System.err.println("DatabaseEnvironmentPostProcessor: ERROR - SPRING_DATASOURCE_URL has no credentials and DATABASE_URL is not set!");
+                    System.err.println("DatabaseEnvironmentPostProcessor: Please ensure DATABASE_URL is set in Railway environment variables.");
                 }
+            }
+            
+            // 認証情報がまだない場合はエラー
+            if (!properties.containsKey("SPRING_DATASOURCE_USERNAME") || !properties.containsKey("SPRING_DATASOURCE_PASSWORD")) {
+                System.err.println("DatabaseEnvironmentPostProcessor: ERROR - No database credentials found!");
+                System.err.println("DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL: " + (springDatasourceUrl != null ? "set" : "null"));
+                System.err.println("DatabaseEnvironmentPostProcessor: DATABASE_URL: " + (System.getenv("DATABASE_URL") != null ? "set" : "null"));
+                throw new IllegalStateException("Database credentials (username and password) are required but not found. Please set DATABASE_URL in Railway.");
             }
             
             MapPropertySource propertySource = new MapPropertySource("database-url-converter", properties);
             environment.getPropertySources().addFirst(propertySource);
             
-            System.out.println("DatabaseEnvironmentPostProcessor: Using SPRING_DATASOURCE_URL from environment variable");
+            System.out.println("DatabaseEnvironmentPostProcessor: Database configuration set successfully");
             return;
         }
         

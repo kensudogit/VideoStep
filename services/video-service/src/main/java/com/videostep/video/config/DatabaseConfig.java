@@ -2,6 +2,7 @@ package com.videostep.video.config;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +13,7 @@ import javax.sql.DataSource;
 
 /**
  * データベース設定クラス
- * RailwayのDATABASE_URLをJDBC URL形式に変換してDataSourceを作成
+ * DatabaseEnvironmentPostProcessorが設定したSPRING_DATASOURCE_*プロパティを使用してDataSourceを作成
  */
 @Configuration
 public class DatabaseConfig {
@@ -20,43 +21,41 @@ public class DatabaseConfig {
     @Bean
     @Primary
     @ConfigurationProperties("spring.datasource")
-    public DataSource dataSource(DataSourceProperties properties) {
-        // システム環境変数からDATABASE_URLを取得
-        String databaseUrl = System.getenv("DATABASE_URL");
+    public DataSource dataSource(
+            DataSourceProperties properties,
+            @Value("${spring.datasource.url:#{null}}") String jdbcUrl,
+            @Value("${spring.datasource.username:#{null}}") String username,
+            @Value("${spring.datasource.password:#{null}}") String password) {
         
-        if (databaseUrl != null && !databaseUrl.isEmpty() && !databaseUrl.startsWith("jdbc:")) {
-            if (databaseUrl.startsWith("postgresql://")) {
-                String jdbcUrl = "jdbc:" + databaseUrl;
-                System.out.println("DatabaseConfig: Using DATABASE_URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
-                
-                HikariConfig config = new HikariConfig();
-                config.setJdbcUrl(jdbcUrl);
-                config.setDriverClassName("org.postgresql.Driver");
-                
-                // DATABASE_URLからユーザー名とパスワードを抽出
-                // postgresql://user:password@host:port/database
-                try {
-                    String urlWithoutPrefix = databaseUrl.substring("postgresql://".length());
-                    int atIndex = urlWithoutPrefix.indexOf('@');
-                    if (atIndex > 0) {
-                        String credentials = urlWithoutPrefix.substring(0, atIndex);
-                        int colonIndex = credentials.indexOf(':');
-                        if (colonIndex > 0) {
-                            String username = credentials.substring(0, colonIndex);
-                            String password = credentials.substring(colonIndex + 1);
-                            config.setUsername(username);
-                            config.setPassword(password);
-                        }
-                    }
-                } catch (Exception e) {
-                    System.out.println("DatabaseConfig: Failed to parse credentials from DATABASE_URL, using defaults");
-                }
-                
-                return new HikariDataSource(config);
+        // DatabaseEnvironmentPostProcessorが設定したJDBC URLと認証情報を使用
+        if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
+            System.out.println("DatabaseConfig: Using SPRING_DATASOURCE_URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
+            
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(jdbcUrl);
+            config.setDriverClassName("org.postgresql.Driver");
+            
+            // 認証情報を設定（DatabaseEnvironmentPostProcessorが抽出したもの）
+            if (username != null && !username.isEmpty()) {
+                config.setUsername(username);
             }
+            if (password != null && !password.isEmpty()) {
+                config.setPassword(password);
+            }
+            
+            // 接続プールの設定
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(2);
+            config.setConnectionTimeout(30000);
+            config.setIdleTimeout(600000);
+            config.setMaxLifetime(1800000);
+            
+            return new HikariDataSource(config);
         }
         
-        // DATABASE_URLが設定されていない場合は、デフォルトのDataSourcePropertiesを使用
+        // SPRING_DATASOURCE_URLが設定されていない場合は、デフォルトのDataSourcePropertiesを使用
+        // これは通常、ローカル開発環境の場合
+        System.out.println("DatabaseConfig: Using default DataSourceProperties");
         return properties.initializeDataSourceBuilder().build();
     }
 }

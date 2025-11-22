@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -14,8 +13,8 @@ import javax.sql.DataSource;
 
 /**
  * データベース設定クラス
- * DatabaseEnvironmentPostProcessorが設定したspring.datasource.*プロパティを使用してDataSourceを作成
- * JDBC URLから認証情報を分離し、ホスト名の問題を解決
+ * SPRING_DATASOURCE_*環境変数またはspring.datasource.*プロパティを使用してDataSourceを作成
+ * DATABASE_URLを直接使わず、認証情報を分離して設定することでホスト名の問題を解決
  */
 @Configuration
 public class DatabaseConfig {
@@ -25,28 +24,45 @@ public class DatabaseConfig {
 
     @Bean
     @Primary
-    @ConfigurationProperties("spring.datasource")
     public DataSource dataSource(DataSourceProperties properties) {
-        // DatabaseEnvironmentPostProcessorが設定したJDBC URLと認証情報をEnvironmentから直接取得
-        String jdbcUrl = environment.getProperty("spring.datasource.url");
-        String username = environment.getProperty("spring.datasource.username");
-        String password = environment.getProperty("spring.datasource.password");
+        // SPRING_DATASOURCE_*環境変数を優先的に読み取る
+        // なければ、DatabaseEnvironmentPostProcessorが設定したspring.datasource.*プロパティを使用
+        String jdbcUrl = environment.getProperty("SPRING_DATASOURCE_URL");
+        if (jdbcUrl == null || jdbcUrl.isEmpty()) {
+            jdbcUrl = environment.getProperty("spring.datasource.url");
+        }
         
-        // DatabaseEnvironmentPostProcessorが設定したJDBC URLと認証情報を使用
+        String username = environment.getProperty("SPRING_DATASOURCE_USERNAME");
+        if (username == null || username.isEmpty()) {
+            username = environment.getProperty("spring.datasource.username");
+        }
+        
+        String password = environment.getProperty("SPRING_DATASOURCE_PASSWORD");
+        if (password == null || password.isEmpty()) {
+            password = environment.getProperty("spring.datasource.password");
+        }
+        
+        // JDBC URLが設定されている場合は、カスタムDataSourceを作成
         if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
-            System.out.println("DatabaseConfig: Using spring.datasource.url = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
+            // JDBC形式でない場合は、jdbc:を追加
+            if (!jdbcUrl.startsWith("jdbc:")) {
+                jdbcUrl = "jdbc:" + jdbcUrl;
+            }
+            
+            System.out.println("DatabaseConfig: Using JDBC URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
             
             HikariConfig config = new HikariConfig();
             config.setJdbcUrl(jdbcUrl);
             config.setDriverClassName("org.postgresql.Driver");
             
-            // 認証情報を設定（DatabaseEnvironmentPostProcessorが抽出したもの）
+            // 認証情報を設定
             if (username != null && !username.isEmpty()) {
                 config.setUsername(username);
-                System.out.println("DatabaseConfig: Username set (length: " + username.length() + ")");
+                System.out.println("DatabaseConfig: Using USERNAME = " + username);
             } else {
                 System.err.println("DatabaseConfig: WARNING - Username is null or empty!");
             }
+            
             if (password != null && !password.isEmpty()) {
                 config.setPassword(password);
                 System.out.println("DatabaseConfig: Password set (length: " + password.length() + ")");
@@ -64,7 +80,7 @@ public class DatabaseConfig {
             return new HikariDataSource(config);
         }
         
-        // spring.datasource.urlが設定されていない場合は、デフォルトのDataSourcePropertiesを使用
+        // JDBC URLが設定されていない場合は、デフォルトのDataSourcePropertiesを使用
         // これは通常、ローカル開発環境の場合
         System.out.println("DatabaseConfig: Using default DataSourceProperties");
         return properties.initializeDataSourceBuilder().build();

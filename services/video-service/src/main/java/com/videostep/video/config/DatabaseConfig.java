@@ -64,12 +64,12 @@ public class DatabaseConfig {
             config.setJdbcUrl(jdbcUrl);
             config.setDriverClassName("org.postgresql.Driver");
 
-            // 認証情報を設定
+            // 認証情報を設定（空の場合は設定しない - PostgreSQLのデフォルト認証を使用）
             if (username != null && !username.isEmpty()) {
                 config.setUsername(username);
                 System.out.println("DatabaseConfig: Using USERNAME = " + username);
             } else {
-                System.err.println("DatabaseConfig: WARNING - Username is null or empty!");
+                System.out.println("DatabaseConfig: INFO - Username is not set, will use default authentication");
             }
 
             if (password != null && !password.isEmpty()) {
@@ -88,8 +88,20 @@ public class DatabaseConfig {
                     System.out.println("DatabaseConfig: Password first 3 chars codes: " +
                             (int) password.charAt(0) + "," + (int) password.charAt(1) + "," + (int) password.charAt(2));
                 }
+                // パスワードの全文字コードを表示（制御文字や非表示文字を検出するため）
+                StringBuilder charCodes = new StringBuilder();
+                for (int i = 0; i < password.length(); i++) {
+                    if (i > 0) {
+                        charCodes.append(",");
+                    }
+                    charCodes.append((int) password.charAt(i));
+                }
+                System.out.println("DatabaseConfig: Password all char codes: " + charCodes.toString());
+                // 制御文字（0-31、127）が含まれているかチェック
+                boolean hasControlChars = password.chars().anyMatch(c -> c < 32 || c == 127);
+                System.out.println("DatabaseConfig: Password contains control characters: " + hasControlChars);
             } else {
-                System.err.println("DatabaseConfig: WARNING - Password is null or empty!");
+                System.out.println("DatabaseConfig: INFO - Password is not set, will use default authentication");
             }
 
             // 接続プールの設定

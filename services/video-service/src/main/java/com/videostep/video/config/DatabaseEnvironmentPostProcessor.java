@@ -124,16 +124,17 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 }
             }
 
-            // 認証情報がまだない場合はエラー
+            // 認証情報がまだない場合は警告のみ（認証なしで接続を試みる）
             if (!properties.containsKey("spring.datasource.username")
                     || !properties.containsKey("spring.datasource.password")) {
-                System.err.println("DatabaseEnvironmentPostProcessor: ERROR - No database credentials found!");
-                System.err.println("DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL: "
+                System.out.println("DatabaseEnvironmentPostProcessor: WARNING - No database credentials found!");
+                System.out.println("DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL: "
                         + (springDatasourceUrl != null ? "set" : "null"));
-                System.err.println("DatabaseEnvironmentPostProcessor: DATABASE_URL: "
+                System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL: "
                         + (System.getenv("DATABASE_URL") != null ? "set" : "null"));
-                throw new IllegalStateException(
-                        "Database credentials (username and password) are required but not found. Please set DATABASE_URL in Railway.");
+                System.out.println(
+                        "DatabaseEnvironmentPostProcessor: Will attempt connection without explicit credentials (using default authentication)");
+                // 認証情報が空でも接続を試みるため、エラーを出さない
             }
 
             MapPropertySource propertySource = new MapPropertySource("database-url-converter", properties);
@@ -327,6 +328,20 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                         System.out.println(
                                 "DatabaseEnvironmentPostProcessor: Password (Base64 encoded for verification): "
                                         + passwordBase64);
+                        // パスワードの全文字コードを表示（制御文字や非表示文字を検出するため）
+                        StringBuilder charCodes = new StringBuilder();
+                        for (int i = 0; i < password.length(); i++) {
+                            if (i > 0) {
+                                charCodes.append(",");
+                            }
+                            charCodes.append((int) password.charAt(i));
+                        }
+                        System.out.println(
+                                "DatabaseEnvironmentPostProcessor: Password all char codes: " + charCodes.toString());
+                        // 制御文字（0-31、127）が含まれているかチェック
+                        boolean hasControlChars = password.chars().anyMatch(c -> c < 32 || c == 127);
+                        System.out.println("DatabaseEnvironmentPostProcessor: Password contains control characters: "
+                                + hasControlChars);
                     } catch (Exception e) {
                         System.err.println("DatabaseEnvironmentPostProcessor: Failed to encode password to Base64: "
                                 + e.getMessage());
@@ -503,6 +518,21 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                             System.out.println(
                                     "DatabaseEnvironmentPostProcessor: Password (Base64 encoded for verification): "
                                             + passwordBase64);
+                            // パスワードの全文字コードを表示（制御文字や非表示文字を検出するため）
+                            StringBuilder charCodes = new StringBuilder();
+                            for (int i = 0; i < password.length(); i++) {
+                                if (i > 0) {
+                                    charCodes.append(",");
+                                }
+                                charCodes.append((int) password.charAt(i));
+                            }
+                            System.out.println("DatabaseEnvironmentPostProcessor: Password all char codes: "
+                                    + charCodes.toString());
+                            // 制御文字（0-31、127）が含まれているかチェック
+                            boolean hasControlChars = password.chars().anyMatch(c -> c < 32 || c == 127);
+                            System.out
+                                    .println("DatabaseEnvironmentPostProcessor: Password contains control characters: "
+                                            + hasControlChars);
                         } catch (Exception e) {
                             System.err.println("DatabaseEnvironmentPostProcessor: Failed to encode password to Base64: "
                                     + e.getMessage());

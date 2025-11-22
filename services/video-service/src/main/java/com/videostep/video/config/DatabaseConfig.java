@@ -11,6 +11,7 @@ import org.springframework.core.env.Environment;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.nio.charset.StandardCharsets;
 
 /**
  * データベース設定クラス
@@ -72,6 +73,20 @@ public class DatabaseConfig {
 
             System.out.println(
                     "DatabaseConfig: Using JDBC URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
+
+            // デバッグ: 実際に使用される認証情報を確認
+            System.out.println("DatabaseConfig: DEBUG - Username from environment: " +
+                    (username != null ? "'" + username + "' (length: " + username.length() + ")" : "null"));
+            System.out.println("DatabaseConfig: DEBUG - Password from environment: " +
+                    (password != null ? "*** (length: " + password.length() + ")" : "null"));
+            // パスワードの文字列比較テスト（デバッグ用）
+            if (password != null && password.equals("videostep")) {
+                System.out.println("DatabaseConfig: DEBUG - Password matches 'videostep'");
+            } else if (password != null) {
+                System.out.println("DatabaseConfig: DEBUG - Password does NOT match 'videostep'");
+                System.out.println("DatabaseConfig: DEBUG - Password bytes: " +
+                        java.util.Arrays.toString(password.getBytes(StandardCharsets.UTF_8)));
+            }
 
             HikariConfig config = new HikariConfig();
             config.setJdbcUrl(jdbcUrl);
@@ -142,25 +157,17 @@ public class DatabaseConfig {
                         return dataSource;
                     }
                 } catch (Exception e) {
-                    // 認証に失敗した場合、認証情報なしで再接続を試みる
+                    // 認証に失敗した場合の処理
                     String errorMessage = e.getMessage();
                     if (errorMessage != null && errorMessage.contains("password authentication failed")) {
-                        System.out.println(
-                                "DatabaseConfig: WARNING - Authentication failed, retrying without authentication");
+                        // SCRAM認証が要求される場合は、認証なしで再接続を試みない
+                        // （SCRAM認証が必須のため、認証なしでは接続できない）
+                        System.out.println("DatabaseConfig: ERROR - Password authentication failed");
                         System.out.println("DatabaseConfig: Original error: " + errorMessage);
-
-                        // 認証情報なしで新しい設定を作成
-                        HikariConfig configWithoutAuth = new HikariConfig();
-                        configWithoutAuth.setJdbcUrl(jdbcUrl);
-                        configWithoutAuth.setDriverClassName("org.postgresql.Driver");
-                        // 認証情報を設定しない
-                        configWithoutAuth.setMaximumPoolSize(10);
-                        configWithoutAuth.setMinimumIdle(2);
-                        configWithoutAuth.setConnectionTimeout(30000);
-                        configWithoutAuth.setIdleTimeout(600000);
-                        configWithoutAuth.setMaxLifetime(1800000);
-
-                        return new HikariDataSource(configWithoutAuth);
+                        System.out.println(
+                                "DatabaseConfig: Cannot retry without authentication - server requires SCRAM authentication");
+                        // 認証情報が間違っている可能性が高いため、そのまま例外をスロー
+                        throw new RuntimeException("Database authentication failed. Please check your credentials.", e);
                     } else {
                         // その他のエラーの場合は、そのまま例外をスロー
                         throw new RuntimeException("Failed to initialize database connection", e);

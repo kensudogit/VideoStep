@@ -81,6 +81,20 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 if (databaseUrl != null && !databaseUrl.isEmpty()) {
                     System.out.println(
                             "DatabaseEnvironmentPostProcessor: Attempting to extract credentials from DATABASE_URL");
+                    // デバッグ: DATABASE_URLの形式を確認（認証情報部分はマスク）
+                    String maskedUrl = databaseUrl;
+                    if (maskedUrl.contains("@")) {
+                        int atIndex = maskedUrl.indexOf("@");
+                        String beforeAt = maskedUrl.substring(0, atIndex);
+                        String afterAt = maskedUrl.substring(atIndex);
+                        if (beforeAt.contains(":")) {
+                            int colonIndex = beforeAt.indexOf(":");
+                            String userPart = beforeAt.substring(0, colonIndex);
+                            maskedUrl = userPart + ":****@" + afterAt;
+                        }
+                    }
+                    System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL (masked) = " +
+                            maskedUrl.substring(0, Math.min(100, maskedUrl.length())) + "...");
                     try {
                         Map<String, Object> dbUrlProperties = new HashMap<>();
                         if (databaseUrl.startsWith("jdbc:")) {
@@ -342,6 +356,18 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                         boolean hasControlChars = password.chars().anyMatch(c -> c < 32 || c == 127);
                         System.out.println("DatabaseEnvironmentPostProcessor: Password contains control characters: "
                                 + hasControlChars);
+                        // デバッグ: パスワードが期待値と一致するか確認
+                        if (password.equals("videostep")) {
+                            System.out
+                                    .println("DatabaseEnvironmentPostProcessor: DEBUG - Password matches 'videostep'");
+                        } else {
+                            System.out.println(
+                                    "DatabaseEnvironmentPostProcessor: DEBUG - Password does NOT match 'videostep'");
+                            System.out.println("DatabaseEnvironmentPostProcessor: DEBUG - Password bytes: " +
+                                    java.util.Arrays.toString(password.getBytes(StandardCharsets.UTF_8)));
+                            System.out.println("DatabaseEnvironmentPostProcessor: DEBUG - Expected bytes: " +
+                                    java.util.Arrays.toString("videostep".getBytes(StandardCharsets.UTF_8)));
+                        }
                     } catch (Exception e) {
                         System.err.println("DatabaseEnvironmentPostProcessor: Failed to encode password to Base64: "
                                 + e.getMessage());
@@ -533,6 +559,18 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                             System.out
                                     .println("DatabaseEnvironmentPostProcessor: Password contains control characters: "
                                             + hasControlChars);
+                            // デバッグ: パスワードが期待値と一致するか確認
+                            if (password.equals("videostep")) {
+                                System.out.println(
+                                        "DatabaseEnvironmentPostProcessor: DEBUG - Password matches 'videostep'");
+                            } else {
+                                System.out.println(
+                                        "DatabaseEnvironmentPostProcessor: DEBUG - Password does NOT match 'videostep'");
+                                System.out.println("DatabaseEnvironmentPostProcessor: DEBUG - Password bytes: " +
+                                        java.util.Arrays.toString(password.getBytes(StandardCharsets.UTF_8)));
+                                System.out.println("DatabaseEnvironmentPostProcessor: DEBUG - Expected bytes: " +
+                                        java.util.Arrays.toString("videostep".getBytes(StandardCharsets.UTF_8)));
+                            }
                         } catch (Exception e) {
                             System.err.println("DatabaseEnvironmentPostProcessor: Failed to encode password to Base64: "
                                     + e.getMessage());

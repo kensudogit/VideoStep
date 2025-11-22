@@ -66,6 +66,11 @@ public class DatabaseConfig {
             if (password != null && !password.isEmpty()) {
                 config.setPassword(password);
                 System.out.println("DatabaseConfig: Password set (length: " + password.length() + ")");
+                // デバッグ: パスワードの最初の文字のみを表示（セキュリティのため）
+                System.out.println("DatabaseConfig: Password first char: " + password.charAt(0) + "***");
+                // パスワードに特殊文字が含まれているかチェック
+                boolean hasSpecialChars = password.chars().anyMatch(c -> !Character.isLetterOrDigit(c));
+                System.out.println("DatabaseConfig: Password contains special characters: " + hasSpecialChars);
             } else {
                 System.err.println("DatabaseConfig: WARNING - Password is null or empty!");
             }

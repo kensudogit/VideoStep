@@ -273,6 +273,18 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             System.out.println("DatabaseEnvironmentPostProcessor: Extracted port: " + port);
             System.out.println("DatabaseEnvironmentPostProcessor: Extracted database: " + database);
             
+            // デバッグ: 抽出された認証情報の最初の数文字を表示（セキュリティのため完全には表示しない）
+            if (username != null && !username.isEmpty()) {
+                System.out.println("DatabaseEnvironmentPostProcessor: Extracted username (first 3 chars): " + username.substring(0, Math.min(3, username.length())) + "...");
+            }
+            if (password != null && !password.isEmpty()) {
+                // パスワードの最初の文字と最後の文字のみを表示（セキュリティのため）
+                System.out.println("DatabaseEnvironmentPostProcessor: Extracted password (first char): " + password.charAt(0) + "*** (length: " + password.length() + ")");
+                // パスワードに特殊文字が含まれているかチェック
+                boolean hasSpecialChars = password.chars().anyMatch(c -> !Character.isLetterOrDigit(c));
+                System.out.println("DatabaseEnvironmentPostProcessor: Password contains special characters: " + hasSpecialChars);
+            }
+            
             // JDBC URLを構築（認証情報なし）
             String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
             System.out.println("DatabaseEnvironmentPostProcessor: Clean JDBC URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
@@ -281,13 +293,13 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             properties.put("spring.datasource.url", jdbcUrl);
             if (username != null && !username.isEmpty()) {
                 properties.put("spring.datasource.username", username);
-                System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.username");
+                System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.username = " + username);
             } else {
                 System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Username is null or empty!");
             }
             if (password != null && !password.isEmpty()) {
                 properties.put("spring.datasource.password", password);
-                System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.password");
+                System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.password (length: " + password.length() + ")");
             } else {
                 System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Password is null or empty!");
             }

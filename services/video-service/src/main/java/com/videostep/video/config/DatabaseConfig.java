@@ -2,12 +2,13 @@ package com.videostep.video.config;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.env.Environment;
 
 import javax.sql.DataSource;
 
@@ -19,14 +20,17 @@ import javax.sql.DataSource;
 @Configuration
 public class DatabaseConfig {
 
+    @Autowired
+    private Environment environment;
+
     @Bean
     @Primary
     @ConfigurationProperties("spring.datasource")
-    public DataSource dataSource(
-            DataSourceProperties properties,
-            @Value("${spring.datasource.url:#{null}}") String jdbcUrl,
-            @Value("${spring.datasource.username:#{null}}") String username,
-            @Value("${spring.datasource.password:#{null}}") String password) {
+    public DataSource dataSource(DataSourceProperties properties) {
+        // DatabaseEnvironmentPostProcessorが設定したJDBC URLと認証情報をEnvironmentから直接取得
+        String jdbcUrl = environment.getProperty("spring.datasource.url");
+        String username = environment.getProperty("spring.datasource.username");
+        String password = environment.getProperty("spring.datasource.password");
         
         // DatabaseEnvironmentPostProcessorが設定したJDBC URLと認証情報を使用
         if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
@@ -60,7 +64,7 @@ public class DatabaseConfig {
             return new HikariDataSource(config);
         }
         
-        // SPRING_DATASOURCE_URLが設定されていない場合は、デフォルトのDataSourcePropertiesを使用
+        // spring.datasource.urlが設定されていない場合は、デフォルトのDataSourcePropertiesを使用
         // これは通常、ローカル開発環境の場合
         System.out.println("DatabaseConfig: Using default DataSourceProperties");
         return properties.initializeDataSourceBuilder().build();

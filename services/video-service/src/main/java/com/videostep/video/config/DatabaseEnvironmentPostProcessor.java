@@ -194,103 +194,222 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
     /**
      * postgresql://形式のURLをパースして認証情報を抽出
      * 形式: postgresql://user:password@host:port/database
+     * URIクラスを使わず、手動でパースして特殊文字を正しく処理
      */
-    private void parsePostgresUrl(String url, Map<String, Object> properties) throws URISyntaxException {
-        // postgresql://をjdbc:postgresql://に変換する前にパース
-        URI uri = new URI(url);
-        
-        String userInfo = uri.getUserInfo();
-        String host = uri.getHost();
-        int port = uri.getPort() > 0 ? uri.getPort() : 5432;
-        String database = uri.getPath();
-        if (database != null && database.startsWith("/")) {
-            database = database.substring(1);
-        }
-        
-        // 認証情報を抽出
-        String username = null;
-        String password = null;
-        if (userInfo != null && !userInfo.isEmpty()) {
-            String[] userPass = userInfo.split(":", 2);
-            username = URLDecoder.decode(userPass[0], StandardCharsets.UTF_8);
-            if (userPass.length > 1) {
-                password = URLDecoder.decode(userPass[1], StandardCharsets.UTF_8);
+    private void parsePostgresUrl(String url, Map<String, Object> properties) {
+        try {
+            // postgresql://を削除
+            String urlWithoutScheme = url.substring("postgresql://".length());
+            
+            // @の位置を探す（認証情報とホストの境界）
+            int atIndex = urlWithoutScheme.indexOf('@');
+            if (atIndex == -1) {
+                throw new IllegalArgumentException("No @ found in DATABASE_URL");
             }
+            
+            // 認証情報部分を抽出（user:password）
+            String credentials = urlWithoutScheme.substring(0, atIndex);
+            String hostAndPath = urlWithoutScheme.substring(atIndex + 1);
+            
+            // ユーザー名とパスワードを分割（最初の:で分割）
+            int colonIndex = credentials.indexOf(':');
+            String username;
+            String password;
+            if (colonIndex > 0) {
+                String rawUsername = credentials.substring(0, colonIndex);
+                String rawPassword = credentials.substring(colonIndex + 1);
+                
+                // URLデコードを試みる（エンコードされていない場合はそのまま）
+                try {
+                    username = URLDecoder.decode(rawUsername, StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    username = rawUsername;
+                }
+                try {
+                    password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    password = rawPassword;
+                }
+            } else {
+                // パスワードがない場合
+                try {
+                    username = URLDecoder.decode(credentials, StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    username = credentials;
+                }
+                password = null;
+            }
+            
+            // ホスト、ポート、データベース名を抽出
+            // host:port/database または host/database の形式
+            String host;
+            int port = 5432;
+            String database;
+            
+            int slashIndex = hostAndPath.indexOf('/');
+            if (slashIndex == -1) {
+                throw new IllegalArgumentException("No database name found in DATABASE_URL");
+            }
+            
+            String hostAndPort = hostAndPath.substring(0, slashIndex);
+            database = URLDecoder.decode(hostAndPath.substring(slashIndex + 1), StandardCharsets.UTF_8);
+            
+            // ホストとポートを分割
+            int portColonIndex = hostAndPort.lastIndexOf(':');
+            if (portColonIndex > 0) {
+                host = hostAndPort.substring(0, portColonIndex);
+                try {
+                    port = Integer.parseInt(hostAndPort.substring(portColonIndex + 1));
+                } catch (NumberFormatException e) {
+                    System.err.println("DatabaseEnvironmentPostProcessor: WARNING - Invalid port, using default 5432");
+                }
+            } else {
+                host = hostAndPort;
+            }
+            
             System.out.println("DatabaseEnvironmentPostProcessor: Extracted username length: " + (username != null ? username.length() : 0));
             System.out.println("DatabaseEnvironmentPostProcessor: Extracted password length: " + (password != null ? password.length() : 0));
-        } else {
-            System.err.println("DatabaseEnvironmentPostProcessor: WARNING - No userInfo found in URL");
-        }
-        
-        // JDBC URLを構築（認証情報なし）
-        String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
-        System.out.println("DatabaseEnvironmentPostProcessor: Clean JDBC URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
-        
-        // プロパティを設定（Spring Bootの標準プロパティ名を使用）
-        properties.put("spring.datasource.url", jdbcUrl);
-        if (username != null && !username.isEmpty()) {
-            properties.put("spring.datasource.username", username);
-            System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.username");
-        } else {
-            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Username is null or empty!");
-        }
-        if (password != null && !password.isEmpty()) {
-            properties.put("spring.datasource.password", password);
-            System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.password");
-        } else {
-            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Password is null or empty!");
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted host: " + host);
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted port: " + port);
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted database: " + database);
+            
+            // JDBC URLを構築（認証情報なし）
+            String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+            System.out.println("DatabaseEnvironmentPostProcessor: Clean JDBC URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
+            
+            // プロパティを設定（Spring Bootの標準プロパティ名を使用）
+            properties.put("spring.datasource.url", jdbcUrl);
+            if (username != null && !username.isEmpty()) {
+                properties.put("spring.datasource.username", username);
+                System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.username");
+            } else {
+                System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Username is null or empty!");
+            }
+            if (password != null && !password.isEmpty()) {
+                properties.put("spring.datasource.password", password);
+                System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.password");
+            } else {
+                System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Password is null or empty!");
+            }
+        } catch (Exception e) {
+            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Failed to parse postgresql:// URL: " + e.getMessage());
+            e.printStackTrace();
+            throw new IllegalStateException("Failed to parse DATABASE_URL: " + e.getMessage(), e);
         }
     }
     
     /**
      * JDBC URLをパースして認証情報を抽出
      * 形式: jdbc:postgresql://user:password@host:port/database または jdbc:postgresql://host:port/database
+     * URIクラスを使わず、手動でパースして特殊文字を正しく処理
      */
-    private void parseJdbcUrl(String jdbcUrl, Map<String, Object> properties) throws URISyntaxException {
-        // jdbc:プレフィックスを削除してURIとしてパース
-        String urlWithoutJdbc = jdbcUrl.substring(5); // "jdbc:".length() = 5
-        URI uri = new URI(urlWithoutJdbc);
-        
-        String userInfo = uri.getUserInfo();
-        String host = uri.getHost();
-        int port = uri.getPort() > 0 ? uri.getPort() : 5432;
-        String database = uri.getPath();
-        if (database != null && database.startsWith("/")) {
-            database = database.substring(1);
-        }
-        
-        // 認証情報を抽出
-        String username = null;
-        String password = null;
-        if (userInfo != null && !userInfo.isEmpty()) {
-            String[] userPass = userInfo.split(":", 2);
-            username = URLDecoder.decode(userPass[0], StandardCharsets.UTF_8);
-            if (userPass.length > 1) {
-                password = URLDecoder.decode(userPass[1], StandardCharsets.UTF_8);
+    private void parseJdbcUrl(String jdbcUrl, Map<String, Object> properties) {
+        try {
+            // jdbc:postgresql://を削除
+            if (!jdbcUrl.startsWith("jdbc:postgresql://")) {
+                throw new IllegalArgumentException("Invalid JDBC URL format: " + jdbcUrl);
             }
-            System.out.println("DatabaseEnvironmentPostProcessor: Extracted username length: " + (username != null ? username.length() : 0));
-            System.out.println("DatabaseEnvironmentPostProcessor: Extracted password length: " + (password != null ? password.length() : 0));
-        } else {
-            System.err.println("DatabaseEnvironmentPostProcessor: WARNING - No userInfo found in JDBC URL");
-        }
-        
-        // JDBC URLを構築（認証情報なし）
-        String cleanJdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
-        System.out.println("DatabaseEnvironmentPostProcessor: Clean JDBC URL = " + cleanJdbcUrl.substring(0, Math.min(80, cleanJdbcUrl.length())) + "...");
-        
-        // プロパティを設定（Spring Bootの標準プロパティ名を使用）
-        properties.put("spring.datasource.url", cleanJdbcUrl);
-        if (username != null && !username.isEmpty()) {
-            properties.put("spring.datasource.username", username);
-            System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.username");
-        } else {
-            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Username is null or empty!");
-        }
-        if (password != null && !password.isEmpty()) {
-            properties.put("spring.datasource.password", password);
-            System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.password");
-        } else {
-            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Password is null or empty!");
+            String urlWithoutScheme = jdbcUrl.substring("jdbc:postgresql://".length());
+            
+            // @の位置を探す（認証情報とホストの境界）
+            int atIndex = urlWithoutScheme.indexOf('@');
+            String username = null;
+            String password = null;
+            String hostAndPath;
+            
+            if (atIndex > 0) {
+                // 認証情報がある場合
+                String credentials = urlWithoutScheme.substring(0, atIndex);
+                hostAndPath = urlWithoutScheme.substring(atIndex + 1);
+                
+                // ユーザー名とパスワードを分割（最初の:で分割）
+                int colonIndex = credentials.indexOf(':');
+                if (colonIndex > 0) {
+                    String rawUsername = credentials.substring(0, colonIndex);
+                    String rawPassword = credentials.substring(colonIndex + 1);
+                    
+                    // URLデコードを試みる（エンコードされていない場合はそのまま）
+                    try {
+                        username = URLDecoder.decode(rawUsername, StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                        username = rawUsername;
+                    }
+                    try {
+                        password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                        password = rawPassword;
+                    }
+                } else {
+                    // パスワードがない場合
+                    try {
+                        username = URLDecoder.decode(credentials, StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                        username = credentials;
+                    }
+                }
+            } else {
+                // 認証情報がない場合
+                hostAndPath = urlWithoutScheme;
+            }
+            
+            // ホスト、ポート、データベース名を抽出
+            String host;
+            int port = 5432;
+            String database;
+            
+            int slashIndex = hostAndPath.indexOf('/');
+            if (slashIndex == -1) {
+                throw new IllegalArgumentException("No database name found in JDBC URL");
+            }
+            
+            String hostAndPort = hostAndPath.substring(0, slashIndex);
+            database = URLDecoder.decode(hostAndPath.substring(slashIndex + 1), StandardCharsets.UTF_8);
+            
+            // ホストとポートを分割
+            int portColonIndex = hostAndPort.lastIndexOf(':');
+            if (portColonIndex > 0) {
+                host = hostAndPort.substring(0, portColonIndex);
+                try {
+                    port = Integer.parseInt(hostAndPort.substring(portColonIndex + 1));
+                } catch (NumberFormatException e) {
+                    System.err.println("DatabaseEnvironmentPostProcessor: WARNING - Invalid port, using default 5432");
+                }
+            } else {
+                host = hostAndPort;
+            }
+            
+            if (username != null) {
+                System.out.println("DatabaseEnvironmentPostProcessor: Extracted username length: " + username.length());
+            }
+            if (password != null) {
+                System.out.println("DatabaseEnvironmentPostProcessor: Extracted password length: " + password.length());
+            }
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted host: " + host);
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted port: " + port);
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted database: " + database);
+            
+            // JDBC URLを構築（認証情報なし）
+            String cleanJdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+            System.out.println("DatabaseEnvironmentPostProcessor: Clean JDBC URL = " + cleanJdbcUrl.substring(0, Math.min(80, cleanJdbcUrl.length())) + "...");
+            
+            // プロパティを設定（Spring Bootの標準プロパティ名を使用）
+            properties.put("spring.datasource.url", cleanJdbcUrl);
+            if (username != null && !username.isEmpty()) {
+                properties.put("spring.datasource.username", username);
+                System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.username");
+            } else {
+                System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Username is null or empty!");
+            }
+            if (password != null && !password.isEmpty()) {
+                properties.put("spring.datasource.password", password);
+                System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.password");
+            } else {
+                System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Password is null or empty!");
+            }
+        } catch (Exception e) {
+            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Failed to parse JDBC URL: " + e.getMessage());
+            e.printStackTrace();
+            throw new IllegalStateException("Failed to parse JDBC URL: " + e.getMessage(), e);
         }
     }
 }

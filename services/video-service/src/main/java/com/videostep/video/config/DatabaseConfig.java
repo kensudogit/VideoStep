@@ -31,30 +31,39 @@ public class DatabaseConfig {
         if (jdbcUrl == null || jdbcUrl.isEmpty()) {
             jdbcUrl = environment.getProperty("spring.datasource.url");
         }
-        
+
         String username = environment.getProperty("SPRING_DATASOURCE_USERNAME");
         if (username == null || username.isEmpty()) {
             username = environment.getProperty("spring.datasource.username");
         }
-        
+        // ユーザー名の前後の空白をトリム
+        if (username != null) {
+            username = username.trim();
+        }
+
         String password = environment.getProperty("SPRING_DATASOURCE_PASSWORD");
         if (password == null || password.isEmpty()) {
             password = environment.getProperty("spring.datasource.password");
         }
-        
+        // パスワードの前後の空白をトリム
+        if (password != null) {
+            password = password.trim();
+        }
+
         // JDBC URLが設定されている場合は、カスタムDataSourceを作成
         if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
             // JDBC形式でない場合は、jdbc:を追加
             if (!jdbcUrl.startsWith("jdbc:")) {
                 jdbcUrl = "jdbc:" + jdbcUrl;
             }
-            
-            System.out.println("DatabaseConfig: Using JDBC URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
-            
+
+            System.out.println(
+                    "DatabaseConfig: Using JDBC URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
+
             HikariConfig config = new HikariConfig();
             config.setJdbcUrl(jdbcUrl);
             config.setDriverClassName("org.postgresql.Driver");
-            
+
             // 認証情報を設定
             if (username != null && !username.isEmpty()) {
                 config.setUsername(username);
@@ -62,7 +71,7 @@ public class DatabaseConfig {
             } else {
                 System.err.println("DatabaseConfig: WARNING - Username is null or empty!");
             }
-            
+
             if (password != null && !password.isEmpty()) {
                 config.setPassword(password);
                 System.out.println("DatabaseConfig: Password set (length: " + password.length() + ")");
@@ -76,27 +85,26 @@ public class DatabaseConfig {
                 System.out.println("DatabaseConfig: Password contains % (URL encoded): " + hasPercent);
                 // デバッグ: パスワードの文字コードを確認（最初の3文字のみ）
                 if (password.length() >= 3) {
-                    System.out.println("DatabaseConfig: Password first 3 chars codes: " + 
-                        (int)password.charAt(0) + "," + (int)password.charAt(1) + "," + (int)password.charAt(2));
+                    System.out.println("DatabaseConfig: Password first 3 chars codes: " +
+                            (int) password.charAt(0) + "," + (int) password.charAt(1) + "," + (int) password.charAt(2));
                 }
             } else {
                 System.err.println("DatabaseConfig: WARNING - Password is null or empty!");
             }
-            
+
             // 接続プールの設定
             config.setMaximumPoolSize(10);
             config.setMinimumIdle(2);
             config.setConnectionTimeout(30000);
             config.setIdleTimeout(600000);
             config.setMaxLifetime(1800000);
-            
+
             return new HikariDataSource(config);
         }
-        
+
         // JDBC URLが設定されていない場合は、デフォルトのDataSourcePropertiesを使用
         // これは通常、ローカル開発環境の場合
         System.out.println("DatabaseConfig: Using default DataSourceProperties");
         return properties.initializeDataSourceBuilder().build();
     }
 }
-

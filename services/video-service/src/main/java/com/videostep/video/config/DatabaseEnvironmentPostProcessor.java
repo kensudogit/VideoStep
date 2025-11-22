@@ -51,8 +51,8 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             try {
                 parseJdbcUrl(springDatasourceUrl, properties);
                 // 認証情報が抽出されたかチェック
-                hasCredentials = properties.containsKey("SPRING_DATASOURCE_USERNAME") && 
-                                 properties.containsKey("SPRING_DATASOURCE_PASSWORD");
+                hasCredentials = properties.containsKey("spring.datasource.username") && 
+                                 properties.containsKey("spring.datasource.password");
                 if (hasCredentials) {
                     System.out.println("DatabaseEnvironmentPostProcessor: Credentials extracted from SPRING_DATASOURCE_URL");
                 } else {
@@ -61,7 +61,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             } catch (Exception e) {
                 System.err.println("DatabaseEnvironmentPostProcessor: Warning - Failed to parse JDBC URL: " + e.getMessage());
                 // パースに失敗した場合は、そのまま使用
-                properties.put("SPRING_DATASOURCE_URL", springDatasourceUrl);
+                properties.put("spring.datasource.url", springDatasourceUrl);
             }
             
             // SPRING_DATASOURCE_URLに認証情報が含まれていない場合、DATABASE_URLから取得を試みる
@@ -82,18 +82,18 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                         }
                         
                         // DATABASE_URLから認証情報を取得
-                        if (dbUrlProperties.containsKey("SPRING_DATASOURCE_USERNAME")) {
-                            properties.put("SPRING_DATASOURCE_USERNAME", dbUrlProperties.get("SPRING_DATASOURCE_USERNAME"));
+                        if (dbUrlProperties.containsKey("spring.datasource.username")) {
+                            properties.put("spring.datasource.username", dbUrlProperties.get("spring.datasource.username"));
                             System.out.println("DatabaseEnvironmentPostProcessor: Username extracted from DATABASE_URL");
                         }
-                        if (dbUrlProperties.containsKey("SPRING_DATASOURCE_PASSWORD")) {
-                            properties.put("SPRING_DATASOURCE_PASSWORD", dbUrlProperties.get("SPRING_DATASOURCE_PASSWORD"));
+                        if (dbUrlProperties.containsKey("spring.datasource.password")) {
+                            properties.put("spring.datasource.password", dbUrlProperties.get("spring.datasource.password"));
                             System.out.println("DatabaseEnvironmentPostProcessor: Password extracted from DATABASE_URL");
                         }
                         
-                        // DATABASE_URLから完全なJDBC URLも取得（SPRING_DATASOURCE_URLを上書き）
-                        if (dbUrlProperties.containsKey("SPRING_DATASOURCE_URL")) {
-                            properties.put("SPRING_DATASOURCE_URL", dbUrlProperties.get("SPRING_DATASOURCE_URL"));
+                        // DATABASE_URLから完全なJDBC URLも取得
+                        if (dbUrlProperties.containsKey("spring.datasource.url")) {
+                            properties.put("spring.datasource.url", dbUrlProperties.get("spring.datasource.url"));
                             System.out.println("DatabaseEnvironmentPostProcessor: Using JDBC URL from DATABASE_URL");
                         }
                     } catch (Exception e) {
@@ -108,7 +108,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             }
             
             // 認証情報がまだない場合はエラー
-            if (!properties.containsKey("SPRING_DATASOURCE_USERNAME") || !properties.containsKey("SPRING_DATASOURCE_PASSWORD")) {
+            if (!properties.containsKey("spring.datasource.username") || !properties.containsKey("spring.datasource.password")) {
                 System.err.println("DatabaseEnvironmentPostProcessor: ERROR - No database credentials found!");
                 System.err.println("DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL: " + (springDatasourceUrl != null ? "set" : "null"));
                 System.err.println("DatabaseEnvironmentPostProcessor: DATABASE_URL: " + (System.getenv("DATABASE_URL") != null ? "set" : "null"));
@@ -153,11 +153,11 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 MapPropertySource propertySource = new MapPropertySource("database-url-converter", properties);
                 environment.getPropertySources().addFirst(propertySource);
                 
-                System.out.println("DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL set successfully from DATABASE_URL");
-                if (properties.containsKey("SPRING_DATASOURCE_USERNAME")) {
+                System.out.println("DatabaseEnvironmentPostProcessor: spring.datasource.url set successfully from DATABASE_URL");
+                if (properties.containsKey("spring.datasource.username")) {
                     System.out.println("DatabaseEnvironmentPostProcessor: Username extracted from URL");
                 }
-                if (properties.containsKey("SPRING_DATASOURCE_PASSWORD")) {
+                if (properties.containsKey("spring.datasource.password")) {
                     System.out.println("DatabaseEnvironmentPostProcessor: Password extracted from URL");
                 }
             } catch (Exception e) {
@@ -216,18 +216,29 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             if (userPass.length > 1) {
                 password = URLDecoder.decode(userPass[1], StandardCharsets.UTF_8);
             }
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted username length: " + (username != null ? username.length() : 0));
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted password length: " + (password != null ? password.length() : 0));
+        } else {
+            System.err.println("DatabaseEnvironmentPostProcessor: WARNING - No userInfo found in URL");
         }
         
         // JDBC URLを構築（認証情報なし）
         String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+        System.out.println("DatabaseEnvironmentPostProcessor: Clean JDBC URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
         
-        // プロパティを設定
-        properties.put("SPRING_DATASOURCE_URL", jdbcUrl);
+        // プロパティを設定（Spring Bootの標準プロパティ名を使用）
+        properties.put("spring.datasource.url", jdbcUrl);
         if (username != null && !username.isEmpty()) {
-            properties.put("SPRING_DATASOURCE_USERNAME", username);
+            properties.put("spring.datasource.username", username);
+            System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.username");
+        } else {
+            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Username is null or empty!");
         }
         if (password != null && !password.isEmpty()) {
-            properties.put("SPRING_DATASOURCE_PASSWORD", password);
+            properties.put("spring.datasource.password", password);
+            System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.password");
+        } else {
+            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Password is null or empty!");
         }
     }
     
@@ -257,18 +268,29 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             if (userPass.length > 1) {
                 password = URLDecoder.decode(userPass[1], StandardCharsets.UTF_8);
             }
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted username length: " + (username != null ? username.length() : 0));
+            System.out.println("DatabaseEnvironmentPostProcessor: Extracted password length: " + (password != null ? password.length() : 0));
+        } else {
+            System.err.println("DatabaseEnvironmentPostProcessor: WARNING - No userInfo found in JDBC URL");
         }
         
         // JDBC URLを構築（認証情報なし）
         String cleanJdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+        System.out.println("DatabaseEnvironmentPostProcessor: Clean JDBC URL = " + cleanJdbcUrl.substring(0, Math.min(80, cleanJdbcUrl.length())) + "...");
         
-        // プロパティを設定
-        properties.put("SPRING_DATASOURCE_URL", cleanJdbcUrl);
+        // プロパティを設定（Spring Bootの標準プロパティ名を使用）
+        properties.put("spring.datasource.url", cleanJdbcUrl);
         if (username != null && !username.isEmpty()) {
-            properties.put("SPRING_DATASOURCE_USERNAME", username);
+            properties.put("spring.datasource.username", username);
+            System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.username");
+        } else {
+            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Username is null or empty!");
         }
         if (password != null && !password.isEmpty()) {
-            properties.put("SPRING_DATASOURCE_PASSWORD", password);
+            properties.put("spring.datasource.password", password);
+            System.out.println("DatabaseEnvironmentPostProcessor: Set spring.datasource.password");
+        } else {
+            System.err.println("DatabaseEnvironmentPostProcessor: ERROR - Password is null or empty!");
         }
     }
 }

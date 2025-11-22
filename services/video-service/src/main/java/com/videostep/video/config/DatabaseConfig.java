@@ -29,7 +29,7 @@ public class DatabaseConfig {
         
         // DatabaseEnvironmentPostProcessorが設定したJDBC URLと認証情報を使用
         if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
-            System.out.println("DatabaseConfig: Using SPRING_DATASOURCE_URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
+            System.out.println("DatabaseConfig: Using spring.datasource.url = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
             
             HikariConfig config = new HikariConfig();
             config.setJdbcUrl(jdbcUrl);
@@ -38,9 +38,15 @@ public class DatabaseConfig {
             // 認証情報を設定（DatabaseEnvironmentPostProcessorが抽出したもの）
             if (username != null && !username.isEmpty()) {
                 config.setUsername(username);
+                System.out.println("DatabaseConfig: Username set (length: " + username.length() + ")");
+            } else {
+                System.err.println("DatabaseConfig: WARNING - Username is null or empty!");
             }
             if (password != null && !password.isEmpty()) {
                 config.setPassword(password);
+                System.out.println("DatabaseConfig: Password set (length: " + password.length() + ")");
+            } else {
+                System.err.println("DatabaseConfig: WARNING - Password is null or empty!");
             }
             
             // 接続プールの設定

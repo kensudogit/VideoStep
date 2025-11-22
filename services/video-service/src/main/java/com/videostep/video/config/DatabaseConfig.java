@@ -13,7 +13,8 @@ import javax.sql.DataSource;
 
 /**
  * データベース設定クラス
- * DatabaseEnvironmentPostProcessorが設定したSPRING_DATASOURCE_*プロパティを使用してDataSourceを作成
+ * DatabaseEnvironmentPostProcessorが設定したspring.datasource.*プロパティを使用してDataSourceを作成
+ * JDBC URLから認証情報を分離し、ホスト名の問題を解決
  */
 @Configuration
 public class DatabaseConfig {

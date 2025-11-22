@@ -131,7 +131,24 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
         
         System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL from System.getenv() = " + (System.getenv("DATABASE_URL") != null ? "set" : "null"));
         System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL from Environment = " + (environment.getProperty("DATABASE_URL") != null ? "set" : "null"));
-        System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL (final) = " + (databaseUrl != null ? databaseUrl.substring(0, Math.min(50, databaseUrl.length())) + "..." : "null"));
+        // DATABASE_URLの最初の部分のみを表示（認証情報を含むため、完全には表示しない）
+        if (databaseUrl != null && !databaseUrl.isEmpty()) {
+            // postgresql://user:password@host:port/database の形式
+            // user:passwordの部分をマスクして表示
+            String maskedUrl = databaseUrl;
+            int atIndex = databaseUrl.indexOf('@');
+            if (atIndex > 0) {
+                int schemeEnd = databaseUrl.indexOf("://");
+                if (schemeEnd > 0) {
+                    String scheme = databaseUrl.substring(0, schemeEnd + 3);
+                    String rest = databaseUrl.substring(atIndex);
+                    maskedUrl = scheme + "***:***" + rest;
+                }
+            }
+            System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL (masked) = " + maskedUrl.substring(0, Math.min(80, maskedUrl.length())) + "...");
+        } else {
+            System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL (final) = null");
+        }
         
         if (databaseUrl != null && !databaseUrl.isEmpty()) {
             try {
@@ -219,16 +236,30 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 String rawUsername = credentials.substring(0, colonIndex);
                 String rawPassword = credentials.substring(colonIndex + 1);
                 
+                // デバッグ: 生の認証情報を表示（最初の数文字のみ）
+                System.out.println("DatabaseEnvironmentPostProcessor: Raw username (first 3 chars): " + (rawUsername.length() >= 3 ? rawUsername.substring(0, 3) + "..." : rawUsername));
+                System.out.println("DatabaseEnvironmentPostProcessor: Raw password (first char): " + (rawPassword.length() > 0 ? rawPassword.charAt(0) + "*** (length: " + rawPassword.length() + ")" : "empty"));
+                
                 // URLデコードを試みる（エンコードされていない場合はそのまま）
                 try {
                     username = URLDecoder.decode(rawUsername, StandardCharsets.UTF_8);
+                    // デコード前後で変化があったかチェック
+                    if (!username.equals(rawUsername)) {
+                        System.out.println("DatabaseEnvironmentPostProcessor: Username was URL decoded");
+                    }
                 } catch (Exception e) {
                     username = rawUsername;
+                    System.out.println("DatabaseEnvironmentPostProcessor: Username URL decode failed, using raw value");
                 }
                 try {
                     password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
+                    // デコード前後で変化があったかチェック
+                    if (!password.equals(rawPassword)) {
+                        System.out.println("DatabaseEnvironmentPostProcessor: Password was URL decoded");
+                    }
                 } catch (Exception e) {
                     password = rawPassword;
+                    System.out.println("DatabaseEnvironmentPostProcessor: Password URL decode failed, using raw value");
                 }
             } else {
                 // パスワードがない場合

@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -261,6 +262,16 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                     password = rawPassword;
                     System.out.println("DatabaseEnvironmentPostProcessor: Password URL decode failed, using raw value");
                 }
+                
+                // デバッグ: パスワードのBase64エンコードされた値を表示（実際のパスワードを確認するため）
+                if (password != null && !password.isEmpty()) {
+                    try {
+                        String passwordBase64 = Base64.getEncoder().encodeToString(password.getBytes(StandardCharsets.UTF_8));
+                        System.out.println("DatabaseEnvironmentPostProcessor: Password (Base64 encoded for verification): " + passwordBase64);
+                    } catch (Exception e) {
+                        System.err.println("DatabaseEnvironmentPostProcessor: Failed to encode password to Base64: " + e.getMessage());
+                    }
+                }
             } else {
                 // パスワードがない場合
                 try {
@@ -389,6 +400,16 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                         password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
                     } catch (Exception e) {
                         password = rawPassword;
+                    }
+                    
+                    // デバッグ: パスワードのBase64エンコードされた値を表示（実際のパスワードを確認するため）
+                    if (password != null && !password.isEmpty()) {
+                        try {
+                            String passwordBase64 = Base64.getEncoder().encodeToString(password.getBytes(StandardCharsets.UTF_8));
+                            System.out.println("DatabaseEnvironmentPostProcessor: Password (Base64 encoded for verification): " + passwordBase64);
+                        } catch (Exception e) {
+                            System.err.println("DatabaseEnvironmentPostProcessor: Failed to encode password to Base64: " + e.getMessage());
+                        }
                     }
                 } else {
                     // パスワードがない場合

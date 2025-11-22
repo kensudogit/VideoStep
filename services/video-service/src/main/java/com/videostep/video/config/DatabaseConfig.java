@@ -50,6 +50,12 @@ public class DatabaseConfig {
             password = password.trim();
         }
 
+        // 認証情報をスキップするオプションをチェック
+        String skipAuth = environment.getProperty("SKIP_DATABASE_AUTHENTICATION");
+        boolean skipAuthentication = skipAuth != null &&
+                (skipAuth.equalsIgnoreCase("true") || skipAuth.equalsIgnoreCase("1")
+                        || skipAuth.equalsIgnoreCase("yes"));
+
         // JDBC URLが設定されている場合は、カスタムDataSourceを作成
         if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
             // JDBC形式でない場合は、jdbc:を追加
@@ -65,14 +71,20 @@ public class DatabaseConfig {
             config.setDriverClassName("org.postgresql.Driver");
 
             // 認証情報を設定（空の場合は設定しない - PostgreSQLのデフォルト認証を使用）
-            if (username != null && !username.isEmpty()) {
+            // SKIP_DATABASE_AUTHENTICATIONがtrueの場合は認証情報を設定しない
+            if (skipAuthentication) {
+                System.out
+                        .println("DatabaseConfig: INFO - SKIP_DATABASE_AUTHENTICATION is set, skipping authentication");
+            } else if (username != null && !username.isEmpty()) {
                 config.setUsername(username);
                 System.out.println("DatabaseConfig: Using USERNAME = " + username);
             } else {
                 System.out.println("DatabaseConfig: INFO - Username is not set, will use default authentication");
             }
 
-            if (password != null && !password.isEmpty()) {
+            if (skipAuthentication) {
+                System.out.println("DatabaseConfig: INFO - SKIP_DATABASE_AUTHENTICATION is set, password not set");
+            } else if (password != null && !password.isEmpty()) {
                 config.setPassword(password);
                 System.out.println("DatabaseConfig: Password set (length: " + password.length() + ")");
                 // デバッグ: パスワードの最初の文字のみを表示（セキュリティのため）

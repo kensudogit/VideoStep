@@ -9,6 +9,7 @@ services:
       POSTGRES_DB: videostep_auth
       POSTGRES_USER: videostep
       POSTGRES_PASSWORD: videostep
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5433:5432"
     volumes:
@@ -23,6 +24,7 @@ services:
       POSTGRES_DB: videostep_video
       POSTGRES_USER: videostep
       POSTGRES_PASSWORD: videostep
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5440:5432"
     volumes:
@@ -37,6 +39,7 @@ services:
       POSTGRES_DB: videostep_translation
       POSTGRES_USER: videostep
       POSTGRES_PASSWORD: videostep
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5441:5432"
     volumes:
@@ -51,6 +54,7 @@ services:
       POSTGRES_DB: videostep_editing
       POSTGRES_USER: videostep
       POSTGRES_PASSWORD: videostep
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5442:5432"
     volumes:
@@ -65,6 +69,7 @@ services:
       POSTGRES_DB: videostep_user
       POSTGRES_USER: videostep
       POSTGRES_PASSWORD: videostep
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5443:5432"
     volumes:

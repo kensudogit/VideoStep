@@ -71,6 +71,14 @@ public class DatabaseConfig {
                 // パスワードに特殊文字が含まれているかチェック
                 boolean hasSpecialChars = password.chars().anyMatch(c -> !Character.isLetterOrDigit(c));
                 System.out.println("DatabaseConfig: Password contains special characters: " + hasSpecialChars);
+                // デバッグ: パスワードの各文字のタイプを確認（URLエンコードされた文字を検出）
+                boolean hasPercent = password.contains("%");
+                System.out.println("DatabaseConfig: Password contains % (URL encoded): " + hasPercent);
+                // デバッグ: パスワードの文字コードを確認（最初の3文字のみ）
+                if (password.length() >= 3) {
+                    System.out.println("DatabaseConfig: Password first 3 chars codes: " + 
+                        (int)password.charAt(0) + "," + (int)password.charAt(1) + "," + (int)password.charAt(2));
+                }
             } else {
                 System.err.println("DatabaseConfig: WARNING - Password is null or empty!");
             }

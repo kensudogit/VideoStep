@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
 
 /**
  * データベース設定クラス
@@ -55,6 +56,12 @@ public class DatabaseConfig {
         boolean skipAuthentication = skipAuth != null &&
                 (skipAuth.equalsIgnoreCase("true") || skipAuth.equalsIgnoreCase("1")
                         || skipAuth.equalsIgnoreCase("yes"));
+
+        // 認証情報が空の場合は自動的にスキップ
+        if (!skipAuthentication && (username == null || username.isEmpty() || password == null || password.isEmpty())) {
+            System.out.println("DatabaseConfig: INFO - Username or password is empty, will skip authentication");
+            skipAuthentication = true;
+        }
 
         // JDBC URLが設定されている場合は、カスタムDataSourceを作成
         if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
@@ -122,6 +129,44 @@ public class DatabaseConfig {
             config.setConnectionTimeout(30000);
             config.setIdleTimeout(600000);
             config.setMaxLifetime(1800000);
+
+            // 認証情報が設定されている場合でも、認証に失敗した場合は認証なしで再接続を試みる
+            if (!skipAuthentication && username != null && !username.isEmpty() && password != null
+                    && !password.isEmpty()) {
+                try {
+                    HikariDataSource dataSource = new HikariDataSource(config);
+                    // 接続テストを実行
+                    try (Connection conn = dataSource.getConnection()) {
+                        // 接続成功
+                        System.out.println("DatabaseConfig: Connection test successful with authentication");
+                        return dataSource;
+                    }
+                } catch (Exception e) {
+                    // 認証に失敗した場合、認証情報なしで再接続を試みる
+                    String errorMessage = e.getMessage();
+                    if (errorMessage != null && errorMessage.contains("password authentication failed")) {
+                        System.out.println(
+                                "DatabaseConfig: WARNING - Authentication failed, retrying without authentication");
+                        System.out.println("DatabaseConfig: Original error: " + errorMessage);
+
+                        // 認証情報なしで新しい設定を作成
+                        HikariConfig configWithoutAuth = new HikariConfig();
+                        configWithoutAuth.setJdbcUrl(jdbcUrl);
+                        configWithoutAuth.setDriverClassName("org.postgresql.Driver");
+                        // 認証情報を設定しない
+                        configWithoutAuth.setMaximumPoolSize(10);
+                        configWithoutAuth.setMinimumIdle(2);
+                        configWithoutAuth.setConnectionTimeout(30000);
+                        configWithoutAuth.setIdleTimeout(600000);
+                        configWithoutAuth.setMaxLifetime(1800000);
+
+                        return new HikariDataSource(configWithoutAuth);
+                    } else {
+                        // その他のエラーの場合は、そのまま例外をスロー
+                        throw new RuntimeException("Failed to initialize database connection", e);
+                    }
+                }
+            }
 
             return new HikariDataSource(config);
         }

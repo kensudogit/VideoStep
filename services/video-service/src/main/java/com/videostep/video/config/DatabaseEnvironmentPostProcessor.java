@@ -81,6 +81,25 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 if (databaseUrl != null && !databaseUrl.isEmpty()) {
                     System.out.println(
                             "DatabaseEnvironmentPostProcessor: Attempting to extract credentials from DATABASE_URL");
+                    // デバッグ: DATABASE_URLの完全な値を確認（セキュリティのため、パスワード部分のみマスク）
+                    String debugUrl = databaseUrl;
+                    if (debugUrl.contains("@")) {
+                        int atIndex = debugUrl.indexOf("@");
+                        String beforeAt = debugUrl.substring(0, atIndex);
+                        String afterAt = debugUrl.substring(atIndex);
+                        if (beforeAt.contains(":")) {
+                            int colonIndex = beforeAt.indexOf(":");
+                            String userPart = beforeAt.substring(0, colonIndex);
+                            String passPart = beforeAt.substring(colonIndex + 1);
+                            // パスワード部分をマスク（最初の1文字と長さのみ表示）
+                            String maskedPass = passPart.length() > 0
+                                    ? passPart.charAt(0) + "***" + " (length: " + passPart.length() + ")"
+                                    : "empty";
+                            debugUrl = userPart + ":" + maskedPass + "@" + afterAt;
+                        }
+                    }
+                    System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL (full, password masked) = " +
+                            debugUrl);
                     // デバッグ: DATABASE_URLの形式を確認（認証情報部分はマスク）
                     String maskedUrl = databaseUrl;
                     if (maskedUrl.contains("@")) {
@@ -95,6 +114,34 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                     }
                     System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL (masked) = " +
                             maskedUrl.substring(0, Math.min(100, maskedUrl.length())) + "...");
+                    // デバッグ: DATABASE_URLの長さと構造を確認
+                    System.out
+                            .println("DatabaseEnvironmentPostProcessor: DATABASE_URL length = " + databaseUrl.length());
+                    System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL contains 'postgresql://' = " +
+                            databaseUrl.contains("postgresql://"));
+                    System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL contains '@' = " +
+                            databaseUrl.contains("@"));
+                    System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL contains ':' = " +
+                            databaseUrl.contains(":"));
+                    // デバッグ: @の位置を確認
+                    int atIndex = databaseUrl.indexOf("@");
+                    if (atIndex > 0) {
+                        System.out.println("DatabaseEnvironmentPostProcessor: '@' found at index " + atIndex);
+                        String beforeAt = databaseUrl.substring(0, atIndex);
+                        System.out
+                                .println("DatabaseEnvironmentPostProcessor: Before '@' length = " + beforeAt.length());
+                        if (beforeAt.contains(":")) {
+                            int colonIndex = beforeAt.indexOf(":");
+                            System.out.println("DatabaseEnvironmentPostProcessor: ':' found at index " + colonIndex +
+                                    " (before @)");
+                            String userPart = beforeAt.substring(0, colonIndex);
+                            String passPart = beforeAt.substring(colonIndex + 1);
+                            System.out.println("DatabaseEnvironmentPostProcessor: Username part length = " +
+                                    userPart.length());
+                            System.out.println("DatabaseEnvironmentPostProcessor: Password part length = " +
+                                    passPart.length());
+                        }
+                    }
                     try {
                         Map<String, Object> dbUrlProperties = new HashMap<>();
                         if (databaseUrl.startsWith("jdbc:")) {
@@ -263,12 +310,18 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
      * URIクラスを使わず、手動でパースして特殊文字を正しく処理
      */
     private void parsePostgresUrl(String url, Map<String, Object> properties) {
+        System.out
+                .println("DatabaseEnvironmentPostProcessor: parsePostgresUrl called with URL length = " + url.length());
         try {
             // postgresql://を削除
             String urlWithoutScheme = url.substring("postgresql://".length());
+            System.out.println(
+                    "DatabaseEnvironmentPostProcessor: URL without scheme length = " + urlWithoutScheme.length());
 
             // @の位置を探す（認証情報とホストの境界）
             int atIndex = urlWithoutScheme.indexOf('@');
+            System.out.println(
+                    "DatabaseEnvironmentPostProcessor: '@' found at index " + atIndex + " in urlWithoutScheme");
             if (atIndex == -1) {
                 throw new IllegalArgumentException("No @ found in DATABASE_URL");
             }
@@ -276,14 +329,20 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             // 認証情報部分を抽出（user:password）
             String credentials = urlWithoutScheme.substring(0, atIndex);
             String hostAndPath = urlWithoutScheme.substring(atIndex + 1);
+            System.out.println("DatabaseEnvironmentPostProcessor: Credentials part length = " + credentials.length());
+            System.out.println("DatabaseEnvironmentPostProcessor: Host and path part length = " + hostAndPath.length());
 
             // ユーザー名とパスワードを分割（最初の:で分割）
             int colonIndex = credentials.indexOf(':');
+            System.out
+                    .println("DatabaseEnvironmentPostProcessor: ':' found at index " + colonIndex + " in credentials");
             String username;
             String password;
             if (colonIndex > 0) {
                 String rawUsername = credentials.substring(0, colonIndex);
                 String rawPassword = credentials.substring(colonIndex + 1);
+                System.out.println("DatabaseEnvironmentPostProcessor: Raw username length = " + rawUsername.length());
+                System.out.println("DatabaseEnvironmentPostProcessor: Raw password length = " + rawPassword.length());
 
                 // デバッグ: 生の認証情報を表示（最初の数文字のみ）
                 System.out.println("DatabaseEnvironmentPostProcessor: Raw username (first 3 chars): "

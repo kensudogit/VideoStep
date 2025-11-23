@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import { ErrorHandler } from './error-handler'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,8 +21,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ja">
-      <body className={inter.className}>
+    <html lang="ja" suppressHydrationWarning>
+      <head>
+        {/* Preload警告の対応: 必要なリソースのみプリロード */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Deprecated API警告の対応: メタタグを追加 */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body className={inter.className} suppressHydrationWarning>
+        <ErrorHandler />
         <ErrorBoundary>
           {children}
         </ErrorBoundary>

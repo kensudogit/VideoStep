@@ -1,57 +1,73 @@
-# Vercel クイックデプロイ手順
+# クイックデプロイガイド
 
-## 現在の状態
+## 最短5分でVercelにデプロイ
 
-✅ Mockデータ実装済み
-✅ サードパーティCookie廃止対応済み
-✅ 完全公開モード対応済み
+### ステップ1: Vercel CLIのインストール（初回のみ）
 
-## デプロイ方法
+```bash
+npm install -g vercel
+```
 
-### 方法1: Vercel CLI（推奨）
+### ステップ2: ログイン
+
+```bash
+vercel login
+```
+
+### ステップ3: プロジェクトディレクトリに移動
 
 ```bash
 cd C:\devlop\VideoStep\frontend
-vercel --prod --yes
 ```
 
-### 方法2: Vercelダッシュボード
+### ステップ4: 環境変数の設定（本番環境）
 
-1. https://vercel.com にアクセス
-2. プロジェクト `frontend` を選択
-3. "Deployments" タブを開く
-4. 最新のデプロイメントの "..." メニューから "Redeploy" をクリック
+```bash
+# API URLを設定（RailwayのAPI URLに置き換えてください）
+vercel env add NEXT_PUBLIC_API_BASE_URL production
+# プロンプトでAPI URLを入力（例: https://your-api.railway.app）
 
-### 方法3: GitHub連携（自動デプロイ）
+# Mockデータの使用設定（オプション）
+vercel env add NEXT_PUBLIC_USE_MOCK_DATA production
+# プロンプトで false を入力（本番環境では通常false）
+```
 
-変更をGitHubにプッシュすると、Vercelが自動的にデプロイします。
+### ステップ5: デプロイ実行
+
+```bash
+# 本番環境にデプロイ
+vercel --prod
+```
+
+または、Windowsの場合は：
+
+```bash
+deploy-vercel.bat
+```
 
 ## デプロイ後の確認
 
-デプロイが完了したら、以下のURLにアクセス：
+デプロイが完了すると、以下のようなURLが表示されます：
 
-**本番URL**: https://frontend-n22egn6e9-kensudogits-projects.vercel.app
+```
+✅ Production: https://your-project.vercel.app
+```
 
-### 確認項目
-
-- ✅ ホームページで8つのサンプル動画が表示される
-- ✅ 動画詳細ページが正常に動作する
-- ✅ Mockデータが正常に表示される
+このURLにアクセスして、サイトが正常に表示されるか確認してください。
 
 ## トラブルシューティング
 
-### デプロイが失敗する場合
+### ビルドエラーが発生する場合
 
-1. ローカルでビルドを確認：
-   ```bash
-   cd frontend
-   npm run build
-   ```
+```bash
+# ローカルでビルドをテスト
+npm run build
+```
 
-2. エラーを修正してから再デプロイ
+### 環境変数が反映されない場合
 
-### Mockデータが表示されない場合
+1. Vercelダッシュボード（https://vercel.com/dashboard）にアクセス
+2. プロジェクトを選択
+3. **Settings** → **Environment Variables** で確認
 
-- `NEXT_PUBLIC_API_BASE_URL`環境変数が設定されていないことを確認
-- ブラウザの開発者ツールでエラーを確認
-
+詳細は `VERCEL_DEPLOY_GUIDE.md` を参照してください。

@@ -34,11 +34,19 @@ export default function Home() {
     const { apiRequest } = await import('@/utils/api')
     const endpoint = `/api/videos/public?page=${page}&size=${size}`
     
-    console.log('Fetching videos from endpoint:', endpoint)
-    const data = await apiRequest<Video[]>(endpoint)
-    console.log('Fetched videos data:', data)
+    // エラーログを抑制（本番環境では表示しない）
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Fetching videos from endpoint:', endpoint)
+    }
     
-    if (data.success && data.data && Array.isArray(data.data)) {
+    try {
+      const data = await apiRequest<Video[]>(endpoint)
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Fetched videos data:', data)
+      }
+      
+      if (data.success && data.data && Array.isArray(data.data)) {
       // サムネイルがない動画にサンプル画像を設定
       const videosWithThumbnails = data.data.map((video) => ({
         ...video,
@@ -47,7 +55,9 @@ export default function Home() {
         // サムネイルがない場合は、後でVideoCardコンポーネントで自動的に設定される
       }))
       const totalPages = Math.ceil((data as any).pagination?.total || videosWithThumbnails.length / size)
-      console.log('Setting videos:', videosWithThumbnails.length)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Setting videos:', videosWithThumbnails.length)
+      }
       return {
         data: videosWithThumbnails,
         pagination: (data as any).pagination || {
@@ -64,11 +74,23 @@ export default function Home() {
         },
       }
     }
-    // エラー時も空のデータを返す（mockデータが使われているはず）
-    console.warn('Failed to fetch videos, returning empty array')
-    return {
-      data: [],
-      pagination: { page, size, total: 0, totalPages: 0 },
+      // エラー時も空のデータを返す（mockデータが使われているはず）
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Failed to fetch videos, returning empty array')
+      }
+      return {
+        data: [],
+        pagination: { page, size, total: 0, totalPages: 0 },
+      }
+    } catch (error) {
+      // エラーを静かに処理（本番環境では表示しない）
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Error fetching videos:', error)
+      }
+      return {
+        data: [],
+        pagination: { page, size, total: 0, totalPages: 0 },
+      }
     }
   }, [])
 

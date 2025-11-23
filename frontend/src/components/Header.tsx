@@ -19,9 +19,15 @@ export default function Header() {
       const token = useAuthStore.getState().token
       if (token) {
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/auth/logout`, {
+          // サードパーティCookie廃止対応: 同一オリジンのみCookieを送信
+          const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+          const isSameOrigin = typeof globalThis.window !== 'undefined' && 
+            (apiUrl === '' || new URL(apiUrl, globalThis.window.location.origin).origin === globalThis.window.location.origin)
+          const credentials = isSameOrigin ? 'same-origin' : 'omit'
+
+          await fetch(`${apiUrl}/api/auth/logout`, {
             method: 'POST',
-            credentials: 'include',
+            credentials,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`,

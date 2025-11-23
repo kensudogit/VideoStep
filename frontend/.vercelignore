@@ -1,16 +1,29 @@
-node_modules
-.next
-.env.local
-.env*.local
-*.log
-.DS_Store
-.idea
-.vscode
-*.md
-DEPLOYMENT_SUMMARY.md
-VERCEL_DEPLOY.md
-MOCK_DATA_DEPLOY.md
-DEPLOY_INSTRUCTIONS.md
-QUICK_DEPLOY.md
-VERCEL_COOKIE_COMPLIANCE.md
+# Vercel ignore file
+# このファイルに記載されたファイル/ディレクトリはVercelにアップロードされません
 
+# テストファイル
+**/__test__/**
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+vitest.config.ts
+
+# ドキュメント
+*.md
+!README.md
+
+# 開発用ファイル
+.env*.local
+.DS_Store
+
+# ビルド成果物（Vercelで自動生成されるため）
+.next
+out
+dist
+
+# ログファイル
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

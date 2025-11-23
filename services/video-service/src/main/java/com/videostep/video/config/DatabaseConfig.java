@@ -47,10 +47,11 @@ public class DatabaseConfig {
         if (username != null) {
             username = username.trim();
         }
-        
+
         // videostepユーザーが検出された場合、Railwayでは存在しないため警告を出す
         if (username != null && username.equals("videostep")) {
-            System.out.println("DatabaseConfig: WARNING - 'videostep' user detected. Railway PostgreSQL uses 'postgres' user by default.");
+            System.out.println(
+                    "DatabaseConfig: WARNING - 'videostep' user detected. Railway PostgreSQL uses 'postgres' user by default.");
             System.out.println("DatabaseConfig: Attempting to use Railway's PGUSER environment variable instead...");
             // RailwayのPGUSERを再確認
             String pgUser = environment.getProperty("PGUSER");
@@ -75,14 +76,60 @@ public class DatabaseConfig {
         if (password != null) {
             password = password.trim();
         }
-        
+
         // videostepパスワードが検出された場合、RailwayのPGPASSWORDを優先
+        // または、DATABASE_URLから直接正しい認証情報を抽出
         if (password != null && password.equals("videostep")) {
-            System.out.println("DatabaseConfig: WARNING - 'videostep' password detected. Using Railway's PGPASSWORD instead...");
+            System.out.println(
+                    "DatabaseConfig: WARNING - 'videostep' password detected. Attempting to get correct password...");
             String pgPassword = environment.getProperty("PGPASSWORD");
             if (pgPassword != null && !pgPassword.isEmpty() && !pgPassword.equals("videostep")) {
                 password = pgPassword.trim();
                 System.out.println("DatabaseConfig: Using PGPASSWORD from Railway environment");
+            } else {
+                // PGPASSWORDが設定されていない場合、DATABASE_URLから直接抽出を試みる
+                String databaseUrl = System.getenv("DATABASE_URL");
+                if (databaseUrl != null && !databaseUrl.isEmpty() && databaseUrl.startsWith("postgresql://")) {
+                    try {
+                        // DATABASE_URLから認証情報を抽出: postgresql://user:password@host:port/database
+                        String urlWithoutPrefix = databaseUrl.substring("postgresql://".length());
+                        int atIndex = urlWithoutPrefix.indexOf('@');
+                        if (atIndex > 0) {
+                            String credentials = urlWithoutPrefix.substring(0, atIndex);
+                            int colonIndex = credentials.indexOf(':');
+                            if (colonIndex > 0) {
+                                String extractedUser = credentials.substring(0, colonIndex);
+                                String extractedPassword = credentials.substring(colonIndex + 1);
+
+                                // 抽出されたユーザー名がpostgresの場合、そのパスワードを使用
+                                if (extractedUser.equals("postgres") && !extractedPassword.equals("videostep")) {
+                                    password = extractedPassword;
+                                    System.out.println(
+                                            "DatabaseConfig: Extracted password from DATABASE_URL for 'postgres' user");
+                                } else if (!extractedUser.equals("videostep")) {
+                                    // videostep以外のユーザー名が検出された場合、そのパスワードを使用
+                                    password = extractedPassword;
+                                    username = extractedUser; // ユーザー名も更新
+                                    System.out.println("DatabaseConfig: Extracted credentials from DATABASE_URL: user="
+                                            + extractedUser);
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println(
+                                "DatabaseConfig: Failed to extract password from DATABASE_URL: " + e.getMessage());
+                    }
+                }
+
+                // それでもvideostepパスワードのままの場合、エラーを出す
+                if (password != null && password.equals("videostep")) {
+                    System.err.println("DatabaseConfig: ERROR - Cannot use 'videostep' password with 'postgres' user!");
+                    System.err.println(
+                            "DatabaseConfig: Please set PGPASSWORD environment variable in Railway, or ensure DATABASE_URL contains correct credentials.");
+                    throw new IllegalStateException(
+                            "Invalid database credentials: 'videostep' password cannot be used with 'postgres' user. " +
+                                    "Please set PGPASSWORD environment variable in Railway or check DATABASE_URL.");
+                }
             }
         }
 

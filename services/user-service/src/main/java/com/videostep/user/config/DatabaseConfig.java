@@ -65,11 +65,18 @@ public class DatabaseConfig {
                                 
                                 // videostepパスワードが検出された場合、RailwayのPGPASSWORDを優先
                                 if (password.equals("videostep")) {
-                                    System.out.println("DatabaseConfig: WARNING - 'videostep' password detected. Using Railway's PGPASSWORD instead...");
+                                    System.out.println("DatabaseConfig: WARNING - 'videostep' password detected. Attempting to get correct password...");
                                     String pgPassword = System.getenv("PGPASSWORD");
                                     if (pgPassword != null && !pgPassword.isEmpty() && !pgPassword.equals("videostep")) {
                                         password = pgPassword;
                                         System.out.println("DatabaseConfig: Using PGPASSWORD from Railway environment");
+                                    } else {
+                                        // PGPASSWORDが設定されていない場合、エラーを出す
+                                        System.err.println("DatabaseConfig: ERROR - Cannot use 'videostep' password with '" + username + "' user!");
+                                        System.err.println("DatabaseConfig: Please set PGPASSWORD environment variable in Railway, or ensure DATABASE_URL contains correct credentials.");
+                                        throw new IllegalStateException(
+                                            "Invalid database credentials: 'videostep' password cannot be used with '" + username + "' user. " +
+                                            "Please set PGPASSWORD environment variable in Railway or check DATABASE_URL.");
                                     }
                                 }
                             }

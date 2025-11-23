@@ -12,7 +12,7 @@ import javax.sql.DataSource;
 
 /**
  * データベース設定クラス
- * RailwayのDATABASE_URLをJDBC URL形式に変換してDataSourceを作成
+ * DATABASE_URLをJDBC URL形式に変換してDataSourceを作成
  */
 @Configuration
 public class DatabaseConfig {
@@ -25,23 +25,28 @@ public class DatabaseConfig {
         String databaseUrl = System.getenv("DATABASE_URL");
         
         if (databaseUrl != null && !databaseUrl.isEmpty() && !databaseUrl.startsWith("jdbc:")) {
-            if (databaseUrl.startsWith("postgresql://")) {
-                String jdbcUrl = "jdbc:" + databaseUrl;
+            if (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://")) {
+                String jdbcUrl = "jdbc:mysql://" + databaseUrl.substring(databaseUrl.indexOf("://") + 3);
+                // MySQL URL形式の調整
+                if (!jdbcUrl.contains("?")) {
+                    jdbcUrl += "?useSSL=false&allowPublicKeyRetrieval=true";
+                } else if (!jdbcUrl.contains("useSSL")) {
+                    jdbcUrl += "&useSSL=false&allowPublicKeyRetrieval=true";
+                }
                 System.out.println("DatabaseConfig: Using DATABASE_URL = " + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
                 
                 HikariConfig config = new HikariConfig();
                 config.setJdbcUrl(jdbcUrl);
-                config.setDriverClassName("org.postgresql.Driver");
+                config.setDriverClassName("com.mysql.cj.jdbc.Driver");
                 
-                // Railwayの環境変数を優先的に使用（PGUSER, PGPASSWORD）
-                // これにより、Railwayが自動的に設定する正しい認証情報を使用できる
-                String username = System.getenv("PGUSER");
-                String password = System.getenv("PGPASSWORD");
+                // MySQLの環境変数を優先的に使用（MYSQL_USER, MYSQL_PASSWORD）
+                String username = System.getenv("MYSQL_USER");
+                String password = System.getenv("MYSQL_PASSWORD");
                 
-                // PGUSER/PGPASSWORDが設定されていない場合のみ、DATABASE_URLから抽出
+                // MYSQL_USER/MYSQL_PASSWORDが設定されていない場合のみ、DATABASE_URLから抽出
                 if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
                     try {
-                        String urlWithoutPrefix = databaseUrl.substring("postgresql://".length());
+                        String urlWithoutPrefix = databaseUrl.substring(databaseUrl.indexOf("://") + 3);
                         int atIndex = urlWithoutPrefix.indexOf('@');
                         if (atIndex > 0) {
                             String credentials = urlWithoutPrefix.substring(0, atIndex);
@@ -49,43 +54,13 @@ public class DatabaseConfig {
                             if (colonIndex > 0) {
                                 username = credentials.substring(0, colonIndex);
                                 password = credentials.substring(colonIndex + 1);
-                                
-                                // videostepユーザーが検出された場合、Railwayでは存在しないため警告を出す
-                                if (username.equals("videostep")) {
-                                    System.out.println("DatabaseConfig: WARNING - 'videostep' user detected in DATABASE_URL. Railway PostgreSQL uses 'postgres' user by default.");
-                                    String pgUser = System.getenv("PGUSER");
-                                    if (pgUser != null && !pgUser.isEmpty() && !pgUser.equals("videostep")) {
-                                        username = pgUser;
-                                        System.out.println("DatabaseConfig: Using PGUSER = " + username);
-                                    } else {
-                                        System.out.println("DatabaseConfig: PGUSER not set, trying 'postgres' as default Railway user");
-                                        username = "postgres";
-                                    }
-                                }
-                                
-                                // videostepパスワードが検出された場合、RailwayのPGPASSWORDを優先
-                                if (password.equals("videostep")) {
-                                    System.out.println("DatabaseConfig: WARNING - 'videostep' password detected. Attempting to get correct password...");
-                                    String pgPassword = System.getenv("PGPASSWORD");
-                                    if (pgPassword != null && !pgPassword.isEmpty() && !pgPassword.equals("videostep")) {
-                                        password = pgPassword;
-                                        System.out.println("DatabaseConfig: Using PGPASSWORD from Railway environment");
-                                    } else {
-                                        // PGPASSWORDが設定されていない場合、エラーを出す
-                                        System.err.println("DatabaseConfig: ERROR - Cannot use 'videostep' password with '" + username + "' user!");
-                                        System.err.println("DatabaseConfig: Please set PGPASSWORD environment variable in Railway, or ensure DATABASE_URL contains correct credentials.");
-                                        throw new IllegalStateException(
-                                            "Invalid database credentials: 'videostep' password cannot be used with '" + username + "' user. " +
-                                            "Please set PGPASSWORD environment variable in Railway or check DATABASE_URL.");
-                                    }
-                                }
                             }
                         }
                     } catch (Exception e) {
                         System.out.println("DatabaseConfig: Failed to parse credentials from DATABASE_URL: " + e.getMessage());
                     }
                 } else {
-                    System.out.println("DatabaseConfig: Using PGUSER and PGPASSWORD from Railway environment");
+                    System.out.println("DatabaseConfig: Using MYSQL_USER and MYSQL_PASSWORD from environment");
                 }
                 
                 // 認証情報を設定

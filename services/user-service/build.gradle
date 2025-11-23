@@ -16,8 +16,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     
-    // PostgreSQL driver
-    implementation 'org.postgresql:postgresql'
+    // MySQL driver
+    implementation 'com.mysql:mysql-connector-j'
     
     // Lombok
     compileOnly 'org.projectlombok:lombok'

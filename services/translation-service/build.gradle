@@ -17,8 +17,8 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
     
-    // PostgreSQL driver
-    implementation 'org.postgresql:postgresql'
+    // MySQL driver
+    implementation 'com.mysql:mysql-connector-j'
     
     // Google Cloud Translation API
     implementation 'com.google.cloud:google-cloud-translate:2.3.0'

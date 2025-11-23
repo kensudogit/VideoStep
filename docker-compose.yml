@@ -1,81 +1,86 @@
 # version is obsolete in Docker Compose v2
 
 services:
-  # PostgreSQL Databases
-  postgres-auth:
-    image: postgres:15-alpine
-    container_name: videostep-postgres-auth
+  # MySQL Databases
+  mysql-auth:
+    image: mysql:8.0
+    container_name: videostep-mysql-auth
     environment:
-      POSTGRES_DB: videostep_auth
-      POSTGRES_USER: videostep
-      POSTGRES_PASSWORD: videostep
-      POSTGRES_HOST_AUTH_METHOD: trust
+      MYSQL_DATABASE: videostep_auth
+      MYSQL_USER: videostep
+      MYSQL_PASSWORD: videostep
+      MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - "5433:5432"
+      - "3307:3306"
     volumes:
-      - postgres-auth-data:/var/lib/postgresql/data
+      - mysql-auth-data:/var/lib/mysql
     networks:
       - videostep-network
+    command: --default-authentication-plugin=mysql_native_password
 
-  postgres-video:
-    image: postgres:15-alpine
-    container_name: videostep-postgres-video
+  mysql-video:
+    image: mysql:8.0
+    container_name: videostep-mysql-video
     environment:
-      POSTGRES_DB: videostep_video
-      POSTGRES_USER: videostep
-      POSTGRES_PASSWORD: videostep
-      POSTGRES_HOST_AUTH_METHOD: trust
+      MYSQL_DATABASE: videostep_video
+      MYSQL_USER: videostep
+      MYSQL_PASSWORD: videostep
+      MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - "5440:5432"
+      - "3308:3306"
     volumes:
-      - postgres-video-data:/var/lib/postgresql/data
+      - mysql-video-data:/var/lib/mysql
     networks:
       - videostep-network
+    command: --default-authentication-plugin=mysql_native_password
 
-  postgres-translation:
-    image: postgres:15-alpine
-    container_name: videostep-postgres-translation
+  mysql-translation:
+    image: mysql:8.0
+    container_name: videostep-mysql-translation
     environment:
-      POSTGRES_DB: videostep_translation
-      POSTGRES_USER: videostep
-      POSTGRES_PASSWORD: videostep
-      POSTGRES_HOST_AUTH_METHOD: trust
+      MYSQL_DATABASE: videostep_translation
+      MYSQL_USER: videostep
+      MYSQL_PASSWORD: videostep
+      MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - "5441:5432"
+      - "3309:3306"
     volumes:
-      - postgres-translation-data:/var/lib/postgresql/data
+      - mysql-translation-data:/var/lib/mysql
     networks:
       - videostep-network
+    command: --default-authentication-plugin=mysql_native_password
 
-  postgres-editing:
-    image: postgres:15-alpine
-    container_name: videostep-postgres-editing
+  mysql-editing:
+    image: mysql:8.0
+    container_name: videostep-mysql-editing
     environment:
-      POSTGRES_DB: videostep_editing
-      POSTGRES_USER: videostep
-      POSTGRES_PASSWORD: videostep
-      POSTGRES_HOST_AUTH_METHOD: trust
+      MYSQL_DATABASE: videostep_editing
+      MYSQL_USER: videostep
+      MYSQL_PASSWORD: videostep
+      MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - "5442:5432"
+      - "3310:3306"
     volumes:
-      - postgres-editing-data:/var/lib/postgresql/data
+      - mysql-editing-data:/var/lib/mysql
     networks:
       - videostep-network
+    command: --default-authentication-plugin=mysql_native_password
 
-  postgres-user:
-    image: postgres:15-alpine
-    container_name: videostep-postgres-user
+  mysql-user:
+    image: mysql:8.0
+    container_name: videostep-mysql-user
     environment:
-      POSTGRES_DB: videostep_user
-      POSTGRES_USER: videostep
-      POSTGRES_PASSWORD: videostep
-      POSTGRES_HOST_AUTH_METHOD: trust
+      MYSQL_DATABASE: videostep_user
+      MYSQL_USER: videostep
+      MYSQL_PASSWORD: videostep
+      MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - "5443:5432"
+      - "3311:3306"
     volumes:
-      - postgres-user-data:/var/lib/postgresql/data
+      - mysql-user-data:/var/lib/mysql
     networks:
       - videostep-network
+    command: --default-authentication-plugin=mysql_native_password
 
   # Service Registry (Eureka)
   service-registry:
@@ -117,10 +122,10 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - postgres-auth
+      - mysql-auth
       - service-registry
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-auth:5432/videostep_auth
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-auth:3306/videostep_auth?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
       - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
@@ -135,10 +140,10 @@ services:
     ports:
       - "8082:8082"
     depends_on:
-      - postgres-video
+      - mysql-video
       - service-registry
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-video:5432/videostep_video
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-video:3306/videostep_video?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
       - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
@@ -153,10 +158,10 @@ services:
     ports:
       - "8083:8083"
     depends_on:
-      - postgres-translation
+      - mysql-translation
       - service-registry
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-translation:5432/videostep_translation
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-translation:3306/videostep_translation?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
       - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
@@ -171,10 +176,10 @@ services:
     ports:
       - "8084:8084"
     depends_on:
-      - postgres-editing
+      - mysql-editing
       - service-registry
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-editing:5432/videostep_editing
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-editing:3306/videostep_editing?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
       - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
@@ -189,21 +194,21 @@ services:
     ports:
       - "8085:8085"
     depends_on:
-      - postgres-user
+      - mysql-user
       - service-registry
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-user:5432/videostep_user
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-user:3306/videostep_user?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
       - OPENAI_API_KEY=${OPENAI_API_KEY}  
     networks:
       - videostep-network
 
 volumes:
-  postgres-auth-data:
-  postgres-video-data:
-  postgres-translation-data:
-  postgres-editing-data:
-  postgres-user-data:
+  mysql-auth-data:
+  mysql-video-data:
+  mysql-translation-data:
+  mysql-editing-data:
+  mysql-user-data:
 
 networks:
   videostep-network:

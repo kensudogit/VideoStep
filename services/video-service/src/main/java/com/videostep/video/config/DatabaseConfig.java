@@ -11,7 +11,6 @@ import org.springframework.core.env.Environment;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.nio.charset.StandardCharsets;
 
 /**
  * データベース設定クラス
@@ -34,9 +33,8 @@ public class DatabaseConfig {
             jdbcUrl = environment.getProperty("spring.datasource.url");
         }
 
-        // Railwayの環境変数を優先的に使用（PGUSER, PGPASSWORD）
-        // これにより、Railwayが自動的に設定する正しい認証情報を使用できる
-        String username = environment.getProperty("PGUSER");
+        // MySQLの環境変数を優先的に使用（MYSQL_USER, MYSQL_PASSWORD）
+        String username = environment.getProperty("MYSQL_USER");
         if (username == null || username.isEmpty()) {
             username = environment.getProperty("SPRING_DATASOURCE_USERNAME");
         }
@@ -48,24 +46,7 @@ public class DatabaseConfig {
             username = username.trim();
         }
 
-        // videostepユーザーが検出された場合、Railwayでは存在しないため警告を出す
-        if (username != null && username.equals("videostep")) {
-            System.out.println(
-                    "DatabaseConfig: WARNING - 'videostep' user detected. Railway PostgreSQL uses 'postgres' user by default.");
-            System.out.println("DatabaseConfig: Attempting to use Railway's PGUSER environment variable instead...");
-            // RailwayのPGUSERを再確認
-            String pgUser = environment.getProperty("PGUSER");
-            if (pgUser != null && !pgUser.isEmpty() && !pgUser.equals("videostep")) {
-                username = pgUser.trim();
-                System.out.println("DatabaseConfig: Using PGUSER = " + username);
-            } else {
-                // PGUSERが設定されていない場合は、postgresを試す
-                System.out.println("DatabaseConfig: PGUSER not set, trying 'postgres' as default Railway user");
-                username = "postgres";
-            }
-        }
-
-        String password = environment.getProperty("PGPASSWORD");
+        String password = environment.getProperty("MYSQL_PASSWORD");
         if (password == null || password.isEmpty()) {
             password = environment.getProperty("SPRING_DATASOURCE_PASSWORD");
         }
@@ -77,58 +58,29 @@ public class DatabaseConfig {
             password = password.trim();
         }
 
-        // videostepパスワードが検出された場合、RailwayのPGPASSWORDを優先
-        // または、DATABASE_URLから直接正しい認証情報を抽出
-        if (password != null && password.equals("videostep")) {
-            System.out.println(
-                    "DatabaseConfig: WARNING - 'videostep' password detected. Attempting to get correct password...");
-            String pgPassword = environment.getProperty("PGPASSWORD");
-            if (pgPassword != null && !pgPassword.isEmpty() && !pgPassword.equals("videostep")) {
-                password = pgPassword.trim();
-                System.out.println("DatabaseConfig: Using PGPASSWORD from Railway environment");
-            } else {
-                // PGPASSWORDが設定されていない場合、DATABASE_URLから直接抽出を試みる
-                String databaseUrl = System.getenv("DATABASE_URL");
-                if (databaseUrl != null && !databaseUrl.isEmpty() && databaseUrl.startsWith("postgresql://")) {
-                    try {
-                        // DATABASE_URLから認証情報を抽出: postgresql://user:password@host:port/database
-                        String urlWithoutPrefix = databaseUrl.substring("postgresql://".length());
-                        int atIndex = urlWithoutPrefix.indexOf('@');
-                        if (atIndex > 0) {
-                            String credentials = urlWithoutPrefix.substring(0, atIndex);
-                            int colonIndex = credentials.indexOf(':');
-                            if (colonIndex > 0) {
-                                String extractedUser = credentials.substring(0, colonIndex);
-                                String extractedPassword = credentials.substring(colonIndex + 1);
-
-                                // 抽出されたユーザー名がpostgresの場合、そのパスワードを使用
-                                if (extractedUser.equals("postgres") && !extractedPassword.equals("videostep")) {
-                                    password = extractedPassword;
-                                    System.out.println(
-                                            "DatabaseConfig: Extracted password from DATABASE_URL for 'postgres' user");
-                                } else if (!extractedUser.equals("videostep")) {
-                                    // videostep以外のユーザー名が検出された場合、そのパスワードを使用
-                                    password = extractedPassword;
-                                    username = extractedUser; // ユーザー名も更新
-                                    System.out.println("DatabaseConfig: Extracted credentials from DATABASE_URL: user="
-                                            + extractedUser);
-                                }
+        // DATABASE_URLから直接抽出を試みる
+        if ((username == null || username.isEmpty() || password == null || password.isEmpty())) {
+            String databaseUrl = System.getenv("DATABASE_URL");
+            if (databaseUrl != null && !databaseUrl.isEmpty() && (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://"))) {
+                try {
+                    // DATABASE_URLから認証情報を抽出: mysql://user:password@host:port/database
+                    String urlWithoutPrefix = databaseUrl.substring(databaseUrl.indexOf("://") + 3);
+                    int atIndex = urlWithoutPrefix.indexOf('@');
+                    if (atIndex > 0) {
+                        String credentials = urlWithoutPrefix.substring(0, atIndex);
+                        int colonIndex = credentials.indexOf(':');
+                        if (colonIndex > 0) {
+                            if (username == null || username.isEmpty()) {
+                                username = credentials.substring(0, colonIndex);
+                            }
+                            if (password == null || password.isEmpty()) {
+                                password = credentials.substring(colonIndex + 1);
                             }
                         }
-                    } catch (Exception e) {
-                        System.out.println(
-                                "DatabaseConfig: Failed to extract password from DATABASE_URL: " + e.getMessage());
                     }
-                }
-
-                // それでもvideostepパスワードのままの場合、エラーを出す
-                if (password != null && password.equals("videostep")) {
-                    System.err.println("DatabaseConfig: ERROR - Cannot use 'videostep' password with 'postgres' user!");
-                    System.err.println(
-                            "DatabaseConfig: Please set PGPASSWORD environment variable in Railway, or ensure DATABASE_URL contains correct credentials.");
-                    throw new IllegalStateException(
-                            "Invalid database credentials: 'videostep' password cannot be used with 'postgres' user. " +
-                                    "Please set PGPASSWORD environment variable in Railway or check DATABASE_URL.");
+                } catch (Exception e) {
+                    System.out.println(
+                            "DatabaseConfig: Failed to extract credentials from DATABASE_URL: " + e.getMessage());
                 }
             }
         }
@@ -147,9 +99,20 @@ public class DatabaseConfig {
 
         // JDBC URLが設定されている場合は、カスタムDataSourceを作成
         if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
-            // JDBC形式でない場合は、jdbc:を追加
+            // JDBC形式でない場合は、jdbc:mysql://を追加
             if (!jdbcUrl.startsWith("jdbc:")) {
-                jdbcUrl = "jdbc:" + jdbcUrl;
+                if (jdbcUrl.startsWith("mysql://") || jdbcUrl.startsWith("mysqlx://")) {
+                    jdbcUrl = "jdbc:mysql://" + jdbcUrl.substring(jdbcUrl.indexOf("://") + 3);
+                } else {
+                    jdbcUrl = "jdbc:mysql://" + jdbcUrl;
+                }
+            }
+            
+            // MySQL URL形式の調整
+            if (!jdbcUrl.contains("?")) {
+                jdbcUrl += "?useSSL=false&allowPublicKeyRetrieval=true";
+            } else if (!jdbcUrl.contains("useSSL")) {
+                jdbcUrl += "&useSSL=false&allowPublicKeyRetrieval=true";
             }
 
             System.out.println(
@@ -160,18 +123,10 @@ public class DatabaseConfig {
                     (username != null ? "'" + username + "' (length: " + username.length() + ")" : "null"));
             System.out.println("DatabaseConfig: DEBUG - Password from environment: " +
                     (password != null ? "*** (length: " + password.length() + ")" : "null"));
-            // パスワードの文字列比較テスト（デバッグ用）
-            if (password != null && password.equals("videostep")) {
-                System.out.println("DatabaseConfig: DEBUG - Password matches 'videostep'");
-            } else if (password != null) {
-                System.out.println("DatabaseConfig: DEBUG - Password does NOT match 'videostep'");
-                System.out.println("DatabaseConfig: DEBUG - Password bytes: " +
-                        java.util.Arrays.toString(password.getBytes(StandardCharsets.UTF_8)));
-            }
 
             HikariConfig config = new HikariConfig();
             config.setJdbcUrl(jdbcUrl);
-            config.setDriverClassName("org.postgresql.Driver");
+            config.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
             // 認証情報を設定（空の場合は設定しない - PostgreSQLのデフォルト認証を使用）
             // SKIP_DATABASE_AUTHENTICATIONがtrueの場合は認証情報を設定しない
@@ -226,7 +181,7 @@ public class DatabaseConfig {
             config.setIdleTimeout(600000);
             config.setMaxLifetime(1800000);
 
-            // 認証情報が設定されている場合でも、認証に失敗した場合は認証なしで再接続を試みる
+            // 認証情報が設定されている場合でも、認証に失敗した場合は再接続を試みる
             if (!skipAuthentication && username != null && !username.isEmpty() && password != null
                     && !password.isEmpty()) {
                 try {
@@ -240,13 +195,9 @@ public class DatabaseConfig {
                 } catch (Exception e) {
                     // 認証に失敗した場合の処理
                     String errorMessage = e.getMessage();
-                    if (errorMessage != null && errorMessage.contains("password authentication failed")) {
-                        // SCRAM認証が要求される場合は、認証なしで再接続を試みない
-                        // （SCRAM認証が必須のため、認証なしでは接続できない）
+                    if (errorMessage != null && (errorMessage.contains("Access denied") || errorMessage.contains("authentication"))) {
                         System.out.println("DatabaseConfig: ERROR - Password authentication failed");
                         System.out.println("DatabaseConfig: Original error: " + errorMessage);
-                        System.out.println(
-                                "DatabaseConfig: Cannot retry without authentication - server requires SCRAM authentication");
                         // 認証情報が間違っている可能性が高いため、そのまま例外をスロー
                         throw new RuntimeException("Database authentication failed. Please check your credentials.", e);
                     } else {

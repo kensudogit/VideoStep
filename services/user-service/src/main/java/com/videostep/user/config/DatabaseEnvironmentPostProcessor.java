@@ -77,7 +77,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                         Map<String, Object> dbUrlProperties = new HashMap<>();
                         if (databaseUrl.startsWith("jdbc:")) {
                             parseJdbcUrl(databaseUrl, dbUrlProperties);
-                        } else if (databaseUrl.startsWith("postgresql://")) {
+                        } else if (databaseUrl.startsWith("mysql://")) {
                             parsePostgresUrl(databaseUrl, dbUrlProperties);
                         }
                         
@@ -139,15 +139,15 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                     // 既にJDBC形式の場合
                     System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL already in JDBC format");
                     parseJdbcUrl(databaseUrl, properties);
-                } else if (databaseUrl.startsWith("postgresql://")) {
-                    // postgresql://形式の場合、JDBC形式に変換して認証情報を抽出
+                } else if (databaseUrl.startsWith("mysql://")) {
+                    // mysql://形式の場合、JDBC形式に変換して認証情報を抽出
                     System.out.println("DatabaseEnvironmentPostProcessor: Converting DATABASE_URL to JDBC format");
                     parsePostgresUrl(databaseUrl, properties);
                 } else {
                     // 不明な形式
                     System.err.println("DatabaseEnvironmentPostProcessor: ERROR - DATABASE_URL has unknown format: " + (databaseUrl.length() > 50 ? databaseUrl.substring(0, 50) + "..." : databaseUrl));
-                    System.err.println("DatabaseEnvironmentPostProcessor: Expected format: postgresql://... or jdbc:postgresql://...");
-                    throw new IllegalStateException("DATABASE_URL has unknown format. Expected postgresql://... or jdbc:postgresql://...");
+                    System.err.println("DatabaseEnvironmentPostProcessor: Expected format: mysql://... or jdbc:mysql://...");
+                    throw new IllegalStateException("DATABASE_URL has unknown format. Expected mysql://... or jdbc:mysql://...");
                 }
                 
                 MapPropertySource propertySource = new MapPropertySource("database-url-converter", properties);
@@ -177,31 +177,31 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             System.err.println("DatabaseEnvironmentPostProcessor:   1. Open your service in Railway dashboard");
             System.err.println("DatabaseEnvironmentPostProcessor:   2. Go to 'Variables' tab");
             System.err.println("DatabaseEnvironmentPostProcessor:   3. Click 'Connect Database' button");
-            System.err.println("DatabaseEnvironmentPostProcessor:   4. Select your PostgreSQL service");
+            System.err.println("DatabaseEnvironmentPostProcessor:   4. Select your MySQL service");
             System.err.println("DatabaseEnvironmentPostProcessor:   5. DATABASE_URL will be set automatically");
             System.err.println("DatabaseEnvironmentPostProcessor: ");
             System.err.println("DatabaseEnvironmentPostProcessor: Method 2: Set Environment Variables Manually");
             System.err.println("DatabaseEnvironmentPostProcessor:   1. Open your service in Railway dashboard");
             System.err.println("DatabaseEnvironmentPostProcessor:   2. Go to 'Variables' tab");
-            System.err.println("DatabaseEnvironmentPostProcessor:   3. Add variable: SPRING_DATASOURCE_URL=jdbc:postgresql://host:port/database");
+            System.err.println("DatabaseEnvironmentPostProcessor:   3. Add variable: SPRING_DATASOURCE_URL=jdbc:mysql://host:port/database");
             System.err.println("DatabaseEnvironmentPostProcessor:      OR");
-            System.err.println("DatabaseEnvironmentPostProcessor:   4. Add variable: DATABASE_URL=postgresql://user:password@host:port/database");
+            System.err.println("DatabaseEnvironmentPostProcessor:   4. Add variable: DATABASE_URL=mysql://user:password@host:port/database");
             System.err.println("DatabaseEnvironmentPostProcessor: =========================================");
             throw new IllegalStateException("SPRING_DATASOURCE_URL or DATABASE_URL must be set in Railway environment variables. See logs above for setup instructions.");
         }
     }
     
     /**
-     * postgresql://形式のURLをパースして認証情報を抽出
-     * 形式: postgresql://user:password@host:port/database
+     * mysql://形式のURLをパースして認証情報を抽出
+     * 形式: mysql://user:password@host:port/database
      */
     private void parsePostgresUrl(String url, Map<String, Object> properties) throws URISyntaxException {
-        // postgresql://をjdbc:postgresql://に変換する前にパース
+        // mysql://をjdbc:mysql://に変換する前にパース
         URI uri = new URI(url);
         
         String userInfo = uri.getUserInfo();
         String host = uri.getHost();
-        int port = uri.getPort() > 0 ? uri.getPort() : 5432;
+        int port = uri.getPort() > 0 ? uri.getPort() : 3306;
         String database = uri.getPath();
         if (database != null && database.startsWith("/")) {
             database = database.substring(1);
@@ -219,7 +219,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
         }
         
         // JDBC URLを構築（認証情報なし）
-        String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+        String jdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&allowPublicKeyRetrieval=true", host, port, database);
         
         // プロパティを設定
         properties.put("SPRING_DATASOURCE_URL", jdbcUrl);
@@ -233,7 +233,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
     
     /**
      * JDBC URLをパースして認証情報を抽出
-     * 形式: jdbc:postgresql://user:password@host:port/database または jdbc:postgresql://host:port/database
+     * 形式: jdbc:mysql://user:password@host:port/database または jdbc:mysql://host:port/database
      */
     private void parseJdbcUrl(String jdbcUrl, Map<String, Object> properties) throws URISyntaxException {
         // jdbc:プレフィックスを削除してURIとしてパース
@@ -242,7 +242,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
         
         String userInfo = uri.getUserInfo();
         String host = uri.getHost();
-        int port = uri.getPort() > 0 ? uri.getPort() : 5432;
+        int port = uri.getPort() > 0 ? uri.getPort() : 3306;
         String database = uri.getPath();
         if (database != null && database.startsWith("/")) {
             database = database.substring(1);
@@ -260,7 +260,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
         }
         
         // JDBC URLを構築（認証情報なし）
-        String cleanJdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+        String cleanJdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&allowPublicKeyRetrieval=true", host, port, database);
         
         // プロパティを設定
         properties.put("SPRING_DATASOURCE_URL", cleanJdbcUrl);

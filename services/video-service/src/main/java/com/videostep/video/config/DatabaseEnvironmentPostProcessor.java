@@ -117,8 +117,8 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                     // デバッグ: DATABASE_URLの長さと構造を確認
                     System.out
                             .println("DatabaseEnvironmentPostProcessor: DATABASE_URL length = " + databaseUrl.length());
-                    System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL contains 'postgresql://' = " +
-                            databaseUrl.contains("postgresql://"));
+                    System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL contains 'mysql://' = " +
+                            (databaseUrl.contains("mysql://") || databaseUrl.contains("mysqlx://")));
                     System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL contains '@' = " +
                             databaseUrl.contains("@"));
                     System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL contains ':' = " +
@@ -146,8 +146,8 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                         Map<String, Object> dbUrlProperties = new HashMap<>();
                         if (databaseUrl.startsWith("jdbc:")) {
                             parseJdbcUrl(databaseUrl, dbUrlProperties);
-                        } else if (databaseUrl.startsWith("postgresql://")) {
-                            parsePostgresUrl(databaseUrl, dbUrlProperties);
+                        } else if (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://")) {
+                            parseMysqlUrl(databaseUrl, dbUrlProperties);
                         }
 
                         // DATABASE_URLから認証情報を取得
@@ -242,18 +242,18 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                     // 既にJDBC形式の場合
                     System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL already in JDBC format");
                     parseJdbcUrl(databaseUrl, properties);
-                } else if (databaseUrl.startsWith("postgresql://")) {
-                    // postgresql://形式の場合、JDBC形式に変換して認証情報を抽出
+                } else if (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://")) {
+                    // mysql://形式の場合、JDBC形式に変換して認証情報を抽出
                     System.out.println("DatabaseEnvironmentPostProcessor: Converting DATABASE_URL to JDBC format");
-                    parsePostgresUrl(databaseUrl, properties);
+                    parseMysqlUrl(databaseUrl, properties);
                 } else {
                     // 不明な形式
                     System.err.println("DatabaseEnvironmentPostProcessor: ERROR - DATABASE_URL has unknown format: "
                             + (databaseUrl.length() > 50 ? databaseUrl.substring(0, 50) + "..." : databaseUrl));
                     System.err.println(
-                            "DatabaseEnvironmentPostProcessor: Expected format: postgresql://... or jdbc:postgresql://...");
+                            "DatabaseEnvironmentPostProcessor: Expected format: mysql://... or jdbc:mysql://...");
                     throw new IllegalStateException(
-                            "DATABASE_URL has unknown format. Expected postgresql://... or jdbc:postgresql://...");
+                            "DATABASE_URL has unknown format. Expected mysql://... or jdbc:mysql://...");
                 }
 
                 MapPropertySource propertySource = new MapPropertySource("database-url-converter", properties);
@@ -287,17 +287,17 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             System.err.println("DatabaseEnvironmentPostProcessor:   1. Open your service in Railway dashboard");
             System.err.println("DatabaseEnvironmentPostProcessor:   2. Go to 'Variables' tab");
             System.err.println("DatabaseEnvironmentPostProcessor:   3. Click 'Connect Database' button");
-            System.err.println("DatabaseEnvironmentPostProcessor:   4. Select your PostgreSQL service");
+            System.err.println("DatabaseEnvironmentPostProcessor:   4. Select your MySQL service");
             System.err.println("DatabaseEnvironmentPostProcessor:   5. DATABASE_URL will be set automatically");
             System.err.println("DatabaseEnvironmentPostProcessor: ");
             System.err.println("DatabaseEnvironmentPostProcessor: Method 2: Set Environment Variables Manually");
             System.err.println("DatabaseEnvironmentPostProcessor:   1. Open your service in Railway dashboard");
             System.err.println("DatabaseEnvironmentPostProcessor:   2. Go to 'Variables' tab");
             System.err.println(
-                    "DatabaseEnvironmentPostProcessor:   3. Add variable: SPRING_DATASOURCE_URL=jdbc:postgresql://host:port/database");
+                    "DatabaseEnvironmentPostProcessor:   3. Add variable: SPRING_DATASOURCE_URL=jdbc:mysql://host:port/database");
             System.err.println("DatabaseEnvironmentPostProcessor:      OR");
             System.err.println(
-                    "DatabaseEnvironmentPostProcessor:   4. Add variable: DATABASE_URL=postgresql://user:password@host:port/database");
+                    "DatabaseEnvironmentPostProcessor:   4. Add variable: DATABASE_URL=mysql://user:password@host:port/database");
             System.err.println("DatabaseEnvironmentPostProcessor: =========================================");
             throw new IllegalStateException(
                     "SPRING_DATASOURCE_URL or DATABASE_URL must be set in Railway environment variables. See logs above for setup instructions.");
@@ -305,16 +305,17 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
     }
 
     /**
-     * postgresql://形式のURLをパースして認証情報を抽出
-     * 形式: postgresql://user:password@host:port/database
+     * mysql://形式のURLをパースして認証情報を抽出
+     * 形式: mysql://user:password@host:port/database
      * URIクラスを使わず、手動でパースして特殊文字を正しく処理
      */
-    private void parsePostgresUrl(String url, Map<String, Object> properties) {
+    private void parseMysqlUrl(String url, Map<String, Object> properties) {
         System.out
-                .println("DatabaseEnvironmentPostProcessor: parsePostgresUrl called with URL length = " + url.length());
+                .println("DatabaseEnvironmentPostProcessor: parseMysqlUrl called with URL length = " + url.length());
         try {
-            // postgresql://を削除
-            String urlWithoutScheme = url.substring("postgresql://".length());
+            // mysql://またはmysqlx://を削除
+            String scheme = url.startsWith("mysqlx://") ? "mysqlx://" : "mysql://";
+            String urlWithoutScheme = url.substring(scheme.length());
             System.out.println(
                     "DatabaseEnvironmentPostProcessor: URL without scheme length = " + urlWithoutScheme.length());
 
@@ -449,7 +450,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             // ホスト、ポート、データベース名を抽出
             // host:port/database または host/database の形式
             String host;
-            int port = 5432;
+            int port = 3306;
             String database;
 
             int slashIndex = hostAndPath.indexOf('/');
@@ -467,7 +468,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 try {
                     port = Integer.parseInt(hostAndPort.substring(portColonIndex + 1));
                 } catch (NumberFormatException e) {
-                    System.err.println("DatabaseEnvironmentPostProcessor: WARNING - Invalid port, using default 5432");
+                    System.err.println("DatabaseEnvironmentPostProcessor: WARNING - Invalid port, using default 3306");
                 }
             } else {
                 host = hostAndPort;
@@ -506,7 +507,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             }
 
             // JDBC URLを構築（認証情報なし）
-            String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+            String jdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&allowPublicKeyRetrieval=true", host, port, database);
             System.out.println("DatabaseEnvironmentPostProcessor: Clean JDBC URL = "
                     + jdbcUrl.substring(0, Math.min(80, jdbcUrl.length())) + "...");
 
@@ -527,7 +528,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             }
         } catch (Exception e) {
             System.err.println(
-                    "DatabaseEnvironmentPostProcessor: ERROR - Failed to parse postgresql:// URL: " + e.getMessage());
+                    "DatabaseEnvironmentPostProcessor: ERROR - Failed to parse mysql:// URL: " + e.getMessage());
             e.printStackTrace();
             throw new IllegalStateException("Failed to parse DATABASE_URL: " + e.getMessage(), e);
         }
@@ -535,17 +536,18 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
 
     /**
      * JDBC URLをパースして認証情報を抽出
-     * 形式: jdbc:postgresql://user:password@host:port/database または
-     * jdbc:postgresql://host:port/database
+     * 形式: jdbc:mysql://user:password@host:port/database または
+     * jdbc:mysql://host:port/database
      * URIクラスを使わず、手動でパースして特殊文字を正しく処理
      */
     private void parseJdbcUrl(String jdbcUrl, Map<String, Object> properties) {
         try {
-            // jdbc:postgresql://を削除
-            if (!jdbcUrl.startsWith("jdbc:postgresql://")) {
+            // jdbc:mysql://を削除
+            if (!jdbcUrl.startsWith("jdbc:mysql://") && !jdbcUrl.startsWith("jdbc:mysqlx://")) {
                 throw new IllegalArgumentException("Invalid JDBC URL format: " + jdbcUrl);
             }
-            String urlWithoutScheme = jdbcUrl.substring("jdbc:postgresql://".length());
+            String scheme = jdbcUrl.startsWith("jdbc:mysqlx://") ? "jdbc:mysqlx://" : "jdbc:mysql://";
+            String urlWithoutScheme = jdbcUrl.substring(scheme.length());
 
             // @の位置を探す（認証情報とホストの境界）
             int atIndex = urlWithoutScheme.indexOf('@');
@@ -654,7 +656,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
 
             // ホスト、ポート、データベース名を抽出
             String host;
-            int port = 5432;
+            int port = 3306;
             String database;
 
             int slashIndex = hostAndPath.indexOf('/');
@@ -672,7 +674,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 try {
                     port = Integer.parseInt(hostAndPort.substring(portColonIndex + 1));
                 } catch (NumberFormatException e) {
-                    System.err.println("DatabaseEnvironmentPostProcessor: WARNING - Invalid port, using default 5432");
+                    System.err.println("DatabaseEnvironmentPostProcessor: WARNING - Invalid port, using default 3306");
                 }
             } else {
                 host = hostAndPort;
@@ -689,7 +691,7 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             System.out.println("DatabaseEnvironmentPostProcessor: Extracted database: " + database);
 
             // JDBC URLを構築（認証情報なし）
-            String cleanJdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+            String cleanJdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&allowPublicKeyRetrieval=true", host, port, database);
             System.out.println("DatabaseEnvironmentPostProcessor: Clean JDBC URL = "
                     + cleanJdbcUrl.substring(0, Math.min(80, cleanJdbcUrl.length())) + "...");
 

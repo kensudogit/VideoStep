@@ -34,7 +34,12 @@ public class DatabaseConfig {
             jdbcUrl = environment.getProperty("spring.datasource.url");
         }
 
-        String username = environment.getProperty("SPRING_DATASOURCE_USERNAME");
+        // Railwayの環境変数を優先的に使用（PGUSER, PGPASSWORD）
+        // これにより、Railwayが自動的に設定する正しい認証情報を使用できる
+        String username = environment.getProperty("PGUSER");
+        if (username == null || username.isEmpty()) {
+            username = environment.getProperty("SPRING_DATASOURCE_USERNAME");
+        }
         if (username == null || username.isEmpty()) {
             username = environment.getProperty("spring.datasource.username");
         }
@@ -42,14 +47,43 @@ public class DatabaseConfig {
         if (username != null) {
             username = username.trim();
         }
+        
+        // videostepユーザーが検出された場合、Railwayでは存在しないため警告を出す
+        if (username != null && username.equals("videostep")) {
+            System.out.println("DatabaseConfig: WARNING - 'videostep' user detected. Railway PostgreSQL uses 'postgres' user by default.");
+            System.out.println("DatabaseConfig: Attempting to use Railway's PGUSER environment variable instead...");
+            // RailwayのPGUSERを再確認
+            String pgUser = environment.getProperty("PGUSER");
+            if (pgUser != null && !pgUser.isEmpty() && !pgUser.equals("videostep")) {
+                username = pgUser.trim();
+                System.out.println("DatabaseConfig: Using PGUSER = " + username);
+            } else {
+                // PGUSERが設定されていない場合は、postgresを試す
+                System.out.println("DatabaseConfig: PGUSER not set, trying 'postgres' as default Railway user");
+                username = "postgres";
+            }
+        }
 
-        String password = environment.getProperty("SPRING_DATASOURCE_PASSWORD");
+        String password = environment.getProperty("PGPASSWORD");
+        if (password == null || password.isEmpty()) {
+            password = environment.getProperty("SPRING_DATASOURCE_PASSWORD");
+        }
         if (password == null || password.isEmpty()) {
             password = environment.getProperty("spring.datasource.password");
         }
         // パスワードの前後の空白をトリム
         if (password != null) {
             password = password.trim();
+        }
+        
+        // videostepパスワードが検出された場合、RailwayのPGPASSWORDを優先
+        if (password != null && password.equals("videostep")) {
+            System.out.println("DatabaseConfig: WARNING - 'videostep' password detected. Using Railway's PGPASSWORD instead...");
+            String pgPassword = environment.getProperty("PGPASSWORD");
+            if (pgPassword != null && !pgPassword.isEmpty() && !pgPassword.equals("videostep")) {
+                password = pgPassword.trim();
+                System.out.println("DatabaseConfig: Using PGPASSWORD from Railway environment");
+            }
         }
 
         // 認証情報をスキップするオプションをチェック

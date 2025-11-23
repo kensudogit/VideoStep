@@ -33,23 +33,62 @@ public class DatabaseConfig {
                 config.setJdbcUrl(jdbcUrl);
                 config.setDriverClassName("org.postgresql.Driver");
                 
-                // DATABASE_URLからユーザー名とパスワードを抽出
-                // postgresql://user:password@host:port/database
-                try {
-                    String urlWithoutPrefix = databaseUrl.substring("postgresql://".length());
-                    int atIndex = urlWithoutPrefix.indexOf('@');
-                    if (atIndex > 0) {
-                        String credentials = urlWithoutPrefix.substring(0, atIndex);
-                        int colonIndex = credentials.indexOf(':');
-                        if (colonIndex > 0) {
-                            String username = credentials.substring(0, colonIndex);
-                            String password = credentials.substring(colonIndex + 1);
-                            config.setUsername(username);
-                            config.setPassword(password);
+                // Railwayの環境変数を優先的に使用（PGUSER, PGPASSWORD）
+                // これにより、Railwayが自動的に設定する正しい認証情報を使用できる
+                String username = System.getenv("PGUSER");
+                String password = System.getenv("PGPASSWORD");
+                
+                // PGUSER/PGPASSWORDが設定されていない場合のみ、DATABASE_URLから抽出
+                if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
+                    try {
+                        String urlWithoutPrefix = databaseUrl.substring("postgresql://".length());
+                        int atIndex = urlWithoutPrefix.indexOf('@');
+                        if (atIndex > 0) {
+                            String credentials = urlWithoutPrefix.substring(0, atIndex);
+                            int colonIndex = credentials.indexOf(':');
+                            if (colonIndex > 0) {
+                                username = credentials.substring(0, colonIndex);
+                                password = credentials.substring(colonIndex + 1);
+                                
+                                // videostepユーザーが検出された場合、Railwayでは存在しないため警告を出す
+                                if (username.equals("videostep")) {
+                                    System.out.println("DatabaseConfig: WARNING - 'videostep' user detected in DATABASE_URL. Railway PostgreSQL uses 'postgres' user by default.");
+                                    String pgUser = System.getenv("PGUSER");
+                                    if (pgUser != null && !pgUser.isEmpty() && !pgUser.equals("videostep")) {
+                                        username = pgUser;
+                                        System.out.println("DatabaseConfig: Using PGUSER = " + username);
+                                    } else {
+                                        System.out.println("DatabaseConfig: PGUSER not set, trying 'postgres' as default Railway user");
+                                        username = "postgres";
+                                    }
+                                }
+                                
+                                // videostepパスワードが検出された場合、RailwayのPGPASSWORDを優先
+                                if (password.equals("videostep")) {
+                                    System.out.println("DatabaseConfig: WARNING - 'videostep' password detected. Using Railway's PGPASSWORD instead...");
+                                    String pgPassword = System.getenv("PGPASSWORD");
+                                    if (pgPassword != null && !pgPassword.isEmpty() && !pgPassword.equals("videostep")) {
+                                        password = pgPassword;
+                                        System.out.println("DatabaseConfig: Using PGPASSWORD from Railway environment");
+                                    }
+                                }
+                            }
                         }
+                    } catch (Exception e) {
+                        System.out.println("DatabaseConfig: Failed to parse credentials from DATABASE_URL: " + e.getMessage());
                     }
-                } catch (Exception e) {
-                    System.out.println("DatabaseConfig: Failed to parse credentials from DATABASE_URL, using defaults");
+                } else {
+                    System.out.println("DatabaseConfig: Using PGUSER and PGPASSWORD from Railway environment");
+                }
+                
+                // 認証情報を設定
+                if (username != null && !username.isEmpty()) {
+                    config.setUsername(username);
+                    System.out.println("DatabaseConfig: Using USERNAME = " + username);
+                }
+                if (password != null && !password.isEmpty()) {
+                    config.setPassword(password);
+                    System.out.println("DatabaseConfig: Password set (length: " + password.length() + ")");
                 }
                 
                 return new HikariDataSource(config);

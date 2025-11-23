@@ -39,8 +39,16 @@ export function useServerPagination<T>({
       const result = await fetchFunction(page, pageSize)
       setData(result.data)
       if (result.pagination) {
-        setPagination(result.pagination)
-        setCurrentPage(result.pagination.currentPage)
+        // currentPageが存在しない場合は、pageパラメータを使用
+        const paginationWithCurrentPage = {
+          ...result.pagination,
+          currentPage: result.pagination.currentPage !== undefined ? result.pagination.currentPage : page,
+        }
+        setPagination(paginationWithCurrentPage)
+        setCurrentPage(paginationWithCurrentPage.currentPage)
+      } else {
+        // paginationが存在しない場合でも、現在のページを保持
+        setCurrentPage(page)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'データの取得に失敗しました')
@@ -78,11 +86,15 @@ export function useServerPagination<T>({
     fetchData(currentPage)
   }, [currentPage, fetchData])
 
+  // currentPageがNaNにならないように、デフォルト値を設定
+  const safeCurrentPage = isNaN(currentPage) ? 0 : currentPage
+  const displayPage = safeCurrentPage + 1 // 1ベースのページ番号
+
   return {
     data,
     loading,
     error,
-    currentPage: currentPage + 1, // 1ベースのページ番号
+    currentPage: displayPage,
     totalPages: pagination?.totalPages || 0,
     totalElements: pagination?.totalElements || 0,
     pageSize: pagination?.pageSize || pageSize,
@@ -90,7 +102,12 @@ export function useServerPagination<T>({
     hasPrevious: pagination?.hasPrevious || false,
     isFirst: pagination?.isFirst || false,
     isLast: pagination?.isLast || false,
-    goToPage: (page: number) => goToPage(page - 1), // 1ベースから0ベースに変換
+    goToPage: (page: number) => {
+      const targetPage = page - 1 // 1ベースから0ベースに変換
+      if (targetPage >= 0 && (!pagination || targetPage < (pagination.totalPages || 0))) {
+        goToPage(targetPage)
+      }
+    },
     nextPage,
     prevPage,
     refresh,

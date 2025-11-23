@@ -111,6 +111,21 @@ export default function VideoPlayer({
     }
   }
 
+  if (!url) {
+    return (
+      <div className={`relative ${className}`}>
+        <div className="aspect-video bg-black rounded-2xl overflow-hidden flex items-center justify-center">
+          <div className="text-center text-gray-400">
+            <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <p className="text-sm">動画URLが設定されていません</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`relative ${className}`}>
       <div className="aspect-video bg-black rounded-2xl overflow-hidden">
@@ -125,6 +140,14 @@ export default function VideoPlayer({
           onPause={handlePause}
           onProgress={handleProgress}
           progressInterval={5000} // 5秒ごとに進捗を更新
+          config={{
+            file: {
+              attributes: {
+                controlsList: 'nodownload',
+                disablePictureInPicture: true,
+              },
+            },
+          }}
         />
       </div>
     </div>

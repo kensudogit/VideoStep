@@ -33,7 +33,7 @@ public class DatabaseConfig {
                 databaseUrl = databaseUrl.replace(":5432/", ":3306/");
                 databaseUrl = databaseUrl.replace(":5432?", ":3306?");
             }
-            
+
             if (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://")) {
                 String jdbcUrl = "jdbc:mysql://" + databaseUrl.substring(databaseUrl.indexOf("://") + 3);
                 // MySQL URL形式の調整

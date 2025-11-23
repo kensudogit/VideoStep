@@ -23,7 +23,7 @@ interface Video {
   userId: number
   createdAt: string
   category?: string
-  tags?: string
+  tags?: string | string[]
   duration?: number
 }
 
@@ -49,8 +49,15 @@ export default function VideoDetailPage() {
       setLoading(true)
       const { apiRequest } = await import('@/utils/api')
       const data = await apiRequest<any>(`/api/videos/${params.id}`)
+      console.log('Fetched video data:', data)
       if (data.success && data.data) {
-        setVideo(data.data)
+        // videoUrlが設定されていない場合でも、動画データを設定
+        const videoData = {
+          ...data.data,
+          videoUrl: data.data.videoUrl || data.data.video_url || null,
+        }
+        console.log('Setting video:', videoData)
+        setVideo(videoData)
       } else {
         setError('動画が見つかりませんでした')
       }
@@ -211,9 +218,9 @@ export default function VideoDetailPage() {
                       {video.category}
                     </span>
                   )}
-                  {video.tags && video.tags.split(',').map((tag: string, index: number) => (
+                  {video.tags && (Array.isArray(video.tags) ? video.tags : video.tags.split(',')).map((tag: string, index: number) => (
                     <span key={index} className="px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-sm">
-                      {tag.trim()}
+                      {typeof tag === 'string' ? tag.trim() : tag}
                     </span>
                   ))}
                 </div>

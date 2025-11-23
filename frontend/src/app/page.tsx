@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import Link from 'next/link'
 import { useAuthStore } from '@/store/authStore'
 import VideoList from '@/components/VideoList'
 import Header from '@/components/Header'
+import Pagination from '@/components/Pagination'
+import { useServerPagination } from '@/hooks/useServerPagination'
 
 interface Video {
   id: number
@@ -27,38 +29,59 @@ interface Video {
 
 export default function Home() {
   const { isAuthenticated } = useAuthStore()
-  const [videos, setVideos] = useState<Video[]>([])
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchVideos()
+  const fetchVideos = useCallback(async (page: number, size: number) => {
+    const { apiRequest } = await import('@/utils/api')
+    const endpoint = `/api/videos/public?page=${page}&size=${size}`
+    
+    console.log('Fetching videos from endpoint:', endpoint)
+    const data = await apiRequest<Video[]>(endpoint)
+    console.log('Fetched videos data:', data)
+    
+    if (data.success && data.data && Array.isArray(data.data)) {
+      // サムネイルがない動画にサンプル画像を設定
+      const videosWithThumbnails = data.data.map((video) => ({
+        ...video,
+        viewCount: video.viewCount ?? video.views ?? 0,
+        likeCount: video.likeCount ?? video.likes ?? 0,
+        // サムネイルがない場合は、後でVideoCardコンポーネントで自動的に設定される
+      }))
+      const totalPages = Math.ceil((data as any).pagination?.total || videosWithThumbnails.length / size)
+      console.log('Setting videos:', videosWithThumbnails.length)
+      return {
+        data: videosWithThumbnails,
+        pagination: (data as any).pagination || {
+          currentPage: page,
+          page,
+          size,
+          total: videosWithThumbnails.length,
+          totalElements: videosWithThumbnails.length,
+          totalPages,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+          isFirst: page === 0,
+          isLast: page >= totalPages - 1,
+        },
+      }
+    }
+    // エラー時も空のデータを返す（mockデータが使われているはず）
+    console.warn('Failed to fetch videos, returning empty array')
+    return {
+      data: [],
+      pagination: { page, size, total: 0, totalPages: 0 },
+    }
   }, [])
 
-  const fetchVideos = async () => {
-    try {
-      setLoading(true)
-      const { apiRequest } = await import('@/utils/api')
-      const data = await apiRequest<Video[]>('/api/videos/public?page=0&size=8')
-      if (data.success && data.data) {
-        // サムネイルがない動画にサンプル画像を設定
-        const videosWithThumbnails = data.data.map((video) => ({
-          ...video,
-          viewCount: video.viewCount ?? video.views ?? 0,
-          // サムネイルがない場合は、後でVideoCardコンポーネントで自動的に設定される
-        }))
-        setVideos(videosWithThumbnails)
-      } else {
-        // Fallback to empty array if no data
-        setVideos([])
-      }
-    } catch (error) {
-      console.error('Failed to fetch videos:', error)
-      // エラー時は空配列を表示（apiRequestがmockデータを返す）
-      setVideos([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const {
+    data: videos,
+    loading,
+    currentPage,
+    totalPages,
+    goToPage,
+  } = useServerPagination<Video>({
+    pageSize: 8,
+    fetchFunction: fetchVideos,
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -181,7 +204,30 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <VideoList videos={videos.slice(0, 8)} />
+          <>
+            {videos.length > 0 ? (
+              <>
+                <VideoList videos={videos} />
+                {totalPages > 1 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={goToPage}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="text-center py-20">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full flex items-center justify-center">
+                  <svg className="w-12 h-12 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">動画がありません</h3>
+                <p className="text-gray-600 dark:text-gray-400">最初の動画をアップロードしてみましょう</p>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

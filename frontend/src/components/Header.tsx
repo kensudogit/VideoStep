@@ -2,32 +2,72 @@
 
 import Link from 'next/link'
 import { useAuthStore } from '@/store/authStore'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useState } from 'react'
+import Image from 'next/image'
 import NotificationBadge from './NotificationBadge'
 
 export default function Header() {
   const { isAuthenticated, name, clearAuth } = useAuthStore()
   const router = useRouter()
+  const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const handleLogout = () => {
-    clearAuth()
-    router.push('/')
+  const handleLogout = async () => {
+    try {
+      // APIにログアウトリクエストを送信（オプション）
+      const token = useAuthStore.getState().token
+      if (token) {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          })
+        } catch (apiError) {
+          // API呼び出しに失敗してもログアウト処理は続行
+          console.warn('Logout API call failed:', apiError)
+        }
+      }
+    } catch (error) {
+      console.warn('Logout error:', error)
+    } finally {
+      // 認証情報をクリア
+      clearAuth()
+      // ホームページにリダイレクト
+      router.push('/')
+    }
   }
 
   return (
     <header className="sticky top-0 z-50 glass-effect border-b border-white/20 dark:border-gray-700/50 shadow-lg backdrop-blur-xl">
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
-          <Link href="/" className="flex items-center space-x-3 group">
+          <Link 
+            href="/" 
+            className="flex items-center space-x-3 group"
+            onClick={(e) => {
+              // 現在のページがホームページの場合は、ページをリロード
+              if (pathname === '/') {
+                e.preventDefault()
+                router.refresh()
+              }
+            }}
+          >
             <div className="relative">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center transform group-hover:rotate-12 group-hover:scale-110 transition-all duration-300 shadow-lg">
-                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
+              <div className="w-12 h-12 flex items-center justify-center transform group-hover:scale-110 transition-all duration-300">
+                <Image
+                  src="/utsubo_image1.png"
+                  alt="VideoStep Logo"
+                  width={48}
+                  height={48}
+                  className="object-contain"
+                  priority
+                />
               </div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-slate-800 animate-pulse"></div>
             </div>
             <div>
               <span className="text-2xl font-extrabold gradient-text block">VideoStep</span>

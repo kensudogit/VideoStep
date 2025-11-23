@@ -61,7 +61,8 @@ public class DatabaseConfig {
         // DATABASE_URLから直接抽出を試みる
         if ((username == null || username.isEmpty() || password == null || password.isEmpty())) {
             String databaseUrl = System.getenv("DATABASE_URL");
-            if (databaseUrl != null && !databaseUrl.isEmpty() && (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://"))) {
+            if (databaseUrl != null && !databaseUrl.isEmpty()
+                    && (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://"))) {
                 try {
                     // DATABASE_URLから認証情報を抽出: mysql://user:password@host:port/database
                     String urlWithoutPrefix = databaseUrl.substring(databaseUrl.indexOf("://") + 3);
@@ -112,7 +113,7 @@ public class DatabaseConfig {
                 jdbcUrl = jdbcUrl.replace(":5432/", ":3306/");
                 jdbcUrl = jdbcUrl.replace(":5432?", ":3306?");
             }
-            
+
             // JDBC形式でない場合は、jdbc:mysql://を追加
             if (!jdbcUrl.startsWith("jdbc:")) {
                 if (jdbcUrl.startsWith("mysql://") || jdbcUrl.startsWith("mysqlx://")) {
@@ -121,7 +122,7 @@ public class DatabaseConfig {
                     jdbcUrl = "jdbc:mysql://" + jdbcUrl;
                 }
             }
-            
+
             // MySQL URL形式の調整
             if (!jdbcUrl.contains("?")) {
                 jdbcUrl += "?useSSL=false&allowPublicKeyRetrieval=true";
@@ -209,7 +210,8 @@ public class DatabaseConfig {
                 } catch (Exception e) {
                     // 認証に失敗した場合の処理
                     String errorMessage = e.getMessage();
-                    if (errorMessage != null && (errorMessage.contains("Access denied") || errorMessage.contains("authentication"))) {
+                    if (errorMessage != null
+                            && (errorMessage.contains("Access denied") || errorMessage.contains("authentication"))) {
                         System.out.println("DatabaseConfig: ERROR - Password authentication failed");
                         System.out.println("DatabaseConfig: Original error: " + errorMessage);
                         // 認証情報が間違っている可能性が高いため、そのまま例外をスロー

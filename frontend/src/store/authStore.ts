@@ -27,14 +27,21 @@ export const useAuthStore = create<AuthState>()(
           name,
           isAuthenticated: true,
         }),
-      clearAuth: () =>
+      clearAuth: () => {
+        // localStorageからlogin-credentialsも削除
+        try {
+          localStorage.removeItem('login-credentials')
+        } catch (error) {
+          console.warn('Failed to remove login-credentials from localStorage:', error)
+        }
         set({
           token: null,
           userId: null,
           email: null,
           name: null,
           isAuthenticated: false,
-        }),
+        })
+      },
     }),
     {
       name: 'auth-storage',

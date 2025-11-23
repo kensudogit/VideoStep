@@ -28,14 +28,33 @@ export default function VideosPage() {
       endpoint = `/api/videos/public?page=${page}&size=${size}`
     }
     
+    console.log('Fetching videos from endpoint:', endpoint)
     const data = await apiRequest<any[]>(endpoint)
-    if (data.success && data.data) {
+    console.log('Fetched videos data:', data)
+    if (data.success && data.data && Array.isArray(data.data)) {
+      const totalPages = Math.ceil((data as any).pagination?.total || data.data.length / size)
       return {
         data: data.data,
-        pagination: (data as any).pagination || { page, size, total: data.data.length, totalPages: 1 },
+        pagination: (data as any).pagination || { 
+          currentPage: page,
+          page, 
+          size, 
+          total: data.data.length,
+          totalElements: data.data.length,
+          totalPages,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+          isFirst: page === 0,
+          isLast: page >= totalPages - 1,
+        },
       }
     }
-    throw new Error(data.error || 'Failed to fetch videos')
+    // エラー時も空のデータを返す（mockデータが使われているはず）
+    console.warn('Failed to fetch videos, returning empty array')
+    return {
+      data: [],
+      pagination: { page, size, total: 0, totalPages: 0 },
+    }
   }, [searchKeyword, selectedCategory])
 
   interface Video {
@@ -199,3 +218,4 @@ export default function VideosPage() {
     </div>
   )
 }
+

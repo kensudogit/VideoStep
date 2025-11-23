@@ -1,7 +1,6 @@
 'use client'
 
 import { Component, ReactNode } from 'react'
-import Link from 'next/link'
 
 interface Props {
   children: ReactNode
@@ -26,6 +25,13 @@ export default class ErrorBoundary extends Component<Props, State> {
     console.error('Error caught by boundary:', error, errorInfo)
   }
 
+  handleGoHome = () => {
+    // エラー状態をリセット
+    this.setState({ hasError: false, error: undefined })
+    // ホームページに遷移
+    window.location.href = '/'
+  }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -42,19 +48,19 @@ export default class ErrorBoundary extends Component<Props, State> {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               {this.state.error?.message || '予期しないエラーが発生しました'}
             </p>
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => window.location.reload()}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
               >
                 再読み込み
               </button>
-              <Link
-                href="/"
-                className="px-6 py-3 glass-effect text-gray-700 dark:text-gray-300 font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+              <button
+                onClick={this.handleGoHome}
+                className="px-6 py-3 glass-effect text-gray-700 dark:text-gray-300 font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border border-gray-300 dark:border-gray-600"
               >
                 ホームに戻る
-              </Link>
+              </button>
             </div>
           </div>
         </div>

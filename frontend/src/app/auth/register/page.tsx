@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import Link from 'next/link'
 import Header from '@/components/Header'
+import Image from 'next/image'
 
 export default function RegisterPage() {
   const [name, setName] = useState('')
@@ -33,6 +34,21 @@ export default function RegisterPage() {
       const data = await response.json()
 
       if (data.success) {
+        // ログイン情報をlocalStorageに保存（比較チェック用にパスワードも保存）
+        try {
+          const authData = {
+            email,
+            password, // 比較チェック用にパスワードも保存
+            token: data.data.token,
+            userId: data.data.userId,
+            name: data.data.name,
+          }
+          localStorage.setItem('login-credentials', JSON.stringify(authData))
+        } catch (storageError) {
+          console.warn('Failed to save credentials to localStorage:', storageError)
+          // localStorage保存に失敗しても登録処理は続行
+        }
+
         setAuth(
           data.data.token,
           data.data.userId,
@@ -57,10 +73,15 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           <div className="glass-effect rounded-3xl shadow-2xl p-8 md:p-10 animate-fade-in">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
+              <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+                <Image
+                  src="/utsubo_image1.png"
+                  alt="VideoStep Logo"
+                  width={96}
+                  height={96}
+                  className="object-contain"
+                  priority
+                />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">新規登録</h1>
               <p className="text-gray-600 dark:text-gray-400">VideoStepを始めましょう</p>
@@ -110,10 +131,12 @@ export default function RegisterPage() {
                 <input
                   type="password"
                   id="password"
+                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={8}
+                  autoComplete="new-password"
                   className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />

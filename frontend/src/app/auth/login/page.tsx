@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import Link from 'next/link'
 import Header from '@/components/Header'
+import Image from 'next/image'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -20,6 +21,39 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // まずlocalStorageから保存された認証情報を確認
+      const storedAuth = localStorage.getItem('auth-storage')
+      const storedCredentials = localStorage.getItem('login-credentials')
+      
+      if (storedAuth && storedCredentials) {
+        try {
+          const authData = JSON.parse(storedAuth)
+          const credentials = JSON.parse(storedCredentials)
+          const storedEmail = credentials.email
+          const storedPassword = credentials.password
+
+          // メールアドレスとパスワードが一致する場合、localStorageの認証情報を使用
+          if (storedEmail === email && storedPassword === password) {
+            // localStorageの認証情報を使用
+            if (authData.state?.token && authData.state?.userId) {
+              setAuth(
+                authData.state.token,
+                authData.state.userId,
+                authData.state.email,
+                authData.state.name || ''
+              )
+              router.push('/')
+              setLoading(false)
+              return
+            }
+          }
+        } catch (parseError) {
+          // localStorageの解析に失敗した場合は通常のログイン処理を続行
+          console.warn('Failed to parse stored auth data:', parseError)
+        }
+      }
+
+      // API経由でログイン
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}/api/auth/login`, {
         method: 'POST',
         credentials: 'include', // サードパーティCookie廃止対応: Cookieを自動送信
@@ -32,6 +66,16 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (data.success) {
+        // ログイン情報をlocalStorageに保存（パスワードも含む）
+        const authData = {
+          email,
+          password, // 比較チェック用にパスワードも保存
+          token: data.data.token,
+          userId: data.data.userId,
+          name: data.data.name,
+        }
+        localStorage.setItem('login-credentials', JSON.stringify(authData))
+
         setAuth(
           data.data.token,
           data.data.userId,
@@ -56,10 +100,15 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="glass-effect rounded-3xl shadow-2xl p-8 md:p-10 animate-fade-in">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+              <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+                <Image
+                  src="/utsubo_image1.png"
+                  alt="VideoStep Logo"
+                  width={96}
+                  height={96}
+                  className="object-contain"
+                  priority
+                />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">ログイン</h1>
               <p className="text-gray-600 dark:text-gray-400">VideoStepへようこそ</p>

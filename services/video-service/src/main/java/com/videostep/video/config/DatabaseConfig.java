@@ -99,6 +99,20 @@ public class DatabaseConfig {
 
         // JDBC URLが設定されている場合は、カスタムDataSourceを作成
         if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
+            // PostgreSQL URLをMySQL URLに変換
+            if (jdbcUrl.startsWith("jdbc:postgresql://")) {
+                System.out.println("DatabaseConfig: Converting PostgreSQL URL to MySQL URL");
+                jdbcUrl = jdbcUrl.replace("jdbc:postgresql://", "jdbc:mysql://");
+                // ポート5432を3306に変更（URL内にポートが含まれている場合）
+                jdbcUrl = jdbcUrl.replace(":5432/", ":3306/");
+                jdbcUrl = jdbcUrl.replace(":5432?", ":3306?");
+            } else if (jdbcUrl.startsWith("postgresql://")) {
+                System.out.println("DatabaseConfig: Converting PostgreSQL URL to MySQL URL");
+                jdbcUrl = jdbcUrl.replace("postgresql://", "mysql://");
+                jdbcUrl = jdbcUrl.replace(":5432/", ":3306/");
+                jdbcUrl = jdbcUrl.replace(":5432?", ":3306?");
+            }
+            
             // JDBC形式でない場合は、jdbc:mysql://を追加
             if (!jdbcUrl.startsWith("jdbc:")) {
                 if (jdbcUrl.startsWith("mysql://") || jdbcUrl.startsWith("mysqlx://")) {

@@ -46,6 +46,15 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 springDatasourceUrl = "jdbc:" + springDatasourceUrl;
             }
             
+            // PostgreSQL URLをMySQL URLに変換
+            if (springDatasourceUrl.startsWith("jdbc:postgresql://")) {
+                System.out.println("DatabaseEnvironmentPostProcessor: Converting PostgreSQL URL to MySQL URL");
+                springDatasourceUrl = springDatasourceUrl.replace("jdbc:postgresql://", "jdbc:mysql://");
+                // ポート5432を3306に変更（URL内にポートが含まれている場合）
+                springDatasourceUrl = springDatasourceUrl.replace(":5432/", ":3306/");
+                springDatasourceUrl = springDatasourceUrl.replace(":5432?", ":3306?");
+            }
+            
             // URLから認証情報を抽出（JDBC URLに認証情報が含まれている場合）
             boolean hasCredentials = false;
             try {
@@ -75,9 +84,24 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                     System.out.println("DatabaseEnvironmentPostProcessor: Attempting to extract credentials from DATABASE_URL");
                     try {
                         Map<String, Object> dbUrlProperties = new HashMap<>();
+                        // PostgreSQL URLをMySQL URLに変換
+                        if (databaseUrl.startsWith("postgresql://")) {
+                            System.out.println("DatabaseEnvironmentPostProcessor: Converting PostgreSQL DATABASE_URL to MySQL format");
+                            databaseUrl = databaseUrl.replace("postgresql://", "mysql://");
+                            // ポート5432を3306に変更（URL内にポートが含まれている場合）
+                            databaseUrl = databaseUrl.replace(":5432/", ":3306/");
+                            databaseUrl = databaseUrl.replace(":5432?", ":3306?");
+                        }
                         if (databaseUrl.startsWith("jdbc:")) {
+                            // PostgreSQL JDBC URLをMySQL JDBC URLに変換
+                            if (databaseUrl.startsWith("jdbc:postgresql://")) {
+                                System.out.println("DatabaseEnvironmentPostProcessor: Converting PostgreSQL JDBC URL to MySQL JDBC URL");
+                                databaseUrl = databaseUrl.replace("jdbc:postgresql://", "jdbc:mysql://");
+                                databaseUrl = databaseUrl.replace(":5432/", ":3306/");
+                                databaseUrl = databaseUrl.replace(":5432?", ":3306?");
+                            }
                             parseJdbcUrl(databaseUrl, dbUrlProperties);
-                        } else if (databaseUrl.startsWith("mysql://")) {
+                        } else if (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://")) {
                             parsePostgresUrl(databaseUrl, dbUrlProperties);
                         }
                         
@@ -135,11 +159,26 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
         
         if (databaseUrl != null && !databaseUrl.isEmpty()) {
             try {
+                // PostgreSQL URLをMySQL URLに変換
+                if (databaseUrl.startsWith("postgresql://")) {
+                    System.out.println("DatabaseEnvironmentPostProcessor: Converting PostgreSQL DATABASE_URL to MySQL format");
+                    databaseUrl = databaseUrl.replace("postgresql://", "mysql://");
+                    // ポート5432を3306に変更（URL内にポートが含まれている場合）
+                    databaseUrl = databaseUrl.replace(":5432/", ":3306/");
+                    databaseUrl = databaseUrl.replace(":5432?", ":3306?");
+                }
                 if (databaseUrl.startsWith("jdbc:")) {
+                    // PostgreSQL JDBC URLをMySQL JDBC URLに変換
+                    if (databaseUrl.startsWith("jdbc:postgresql://")) {
+                        System.out.println("DatabaseEnvironmentPostProcessor: Converting PostgreSQL JDBC URL to MySQL JDBC URL");
+                        databaseUrl = databaseUrl.replace("jdbc:postgresql://", "jdbc:mysql://");
+                        databaseUrl = databaseUrl.replace(":5432/", ":3306/");
+                        databaseUrl = databaseUrl.replace(":5432?", ":3306?");
+                    }
                     // 既にJDBC形式の場合
                     System.out.println("DatabaseEnvironmentPostProcessor: DATABASE_URL already in JDBC format");
                     parseJdbcUrl(databaseUrl, properties);
-                } else if (databaseUrl.startsWith("mysql://")) {
+                } else if (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://")) {
                     // mysql://形式の場合、JDBC形式に変換して認証情報を抽出
                     System.out.println("DatabaseEnvironmentPostProcessor: Converting DATABASE_URL to JDBC format");
                     parsePostgresUrl(databaseUrl, properties);
@@ -196,6 +235,14 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
      * 形式: mysql://user:password@host:port/database
      */
     private void parsePostgresUrl(String url, Map<String, Object> properties) throws URISyntaxException {
+        // PostgreSQL URLをMySQL URLに変換
+        if (url.startsWith("postgresql://")) {
+            System.out.println("DatabaseEnvironmentPostProcessor: Converting PostgreSQL URL to MySQL URL in parsePostgresUrl");
+            url = url.replace("postgresql://", "mysql://");
+            // ポート5432を3306に変更（URL内にポートが含まれている場合）
+            url = url.replace(":5432/", ":3306/");
+            url = url.replace(":5432?", ":3306?");
+        }
         // mysql://をjdbc:mysql://に変換する前にパース
         URI uri = new URI(url);
         
@@ -236,6 +283,14 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
      * 形式: jdbc:mysql://user:password@host:port/database または jdbc:mysql://host:port/database
      */
     private void parseJdbcUrl(String jdbcUrl, Map<String, Object> properties) throws URISyntaxException {
+        // PostgreSQL JDBC URLをMySQL JDBC URLに変換
+        if (jdbcUrl.startsWith("jdbc:postgresql://")) {
+            System.out.println("DatabaseEnvironmentPostProcessor: Converting PostgreSQL JDBC URL to MySQL JDBC URL in parseJdbcUrl");
+            jdbcUrl = jdbcUrl.replace("jdbc:postgresql://", "jdbc:mysql://");
+            // ポート5432を3306に変更（URL内にポートが含まれている場合）
+            jdbcUrl = jdbcUrl.replace(":5432/", ":3306/");
+            jdbcUrl = jdbcUrl.replace(":5432?", ":3306?");
+        }
         // jdbc:プレフィックスを削除してURIとしてパース
         String urlWithoutJdbc = jdbcUrl.substring(5); // "jdbc:".length() = 5
         URI uri = new URI(urlWithoutJdbc);

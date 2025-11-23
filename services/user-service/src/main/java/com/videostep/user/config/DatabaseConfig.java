@@ -25,6 +25,15 @@ public class DatabaseConfig {
         String databaseUrl = System.getenv("DATABASE_URL");
         
         if (databaseUrl != null && !databaseUrl.isEmpty() && !databaseUrl.startsWith("jdbc:")) {
+            // PostgreSQL URLをMySQL URLに変換
+            if (databaseUrl.startsWith("postgresql://")) {
+                System.out.println("DatabaseConfig: Converting PostgreSQL DATABASE_URL to MySQL URL");
+                databaseUrl = databaseUrl.replace("postgresql://", "mysql://");
+                // ポート5432を3306に変更（URL内にポートが含まれている場合）
+                databaseUrl = databaseUrl.replace(":5432/", ":3306/");
+                databaseUrl = databaseUrl.replace(":5432?", ":3306?");
+            }
+            
             if (databaseUrl.startsWith("mysql://") || databaseUrl.startsWith("mysqlx://")) {
                 String jdbcUrl = "jdbc:mysql://" + databaseUrl.substring(databaseUrl.indexOf("://") + 3);
                 // MySQL URL形式の調整

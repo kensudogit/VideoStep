@@ -2,6 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  // TypeScriptの型チェックから除外するファイル
+  typescript: {
+    ignoreBuildErrors: false,
+  },
   // 500エラーと警告の対応
   experimental: {
     // Deprecated API警告の抑制

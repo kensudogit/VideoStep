@@ -26,17 +26,25 @@ export interface ApiResponse<T> {
 const isApiAvailable = (): boolean => {
   if (typeof globalThis.window === 'undefined') return false
   const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || ''
+  
   // 環境変数で強制的にmockデータを使う設定がある場合はfalseを返す
+  // これが最優先の設定
   if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+    console.log('[Mock Data] NEXT_PUBLIC_USE_MOCK_DATA=true が設定されています。mockデータを使用します。')
     return false
   }
+  
   // 開発環境（localhost）では常にmockデータを使用
   if (apiUrl.includes('localhost') || apiUrl === '' || !apiUrl.startsWith('http')) {
+    console.log('[Mock Data] API URLが設定されていないか、localhostです。mockデータを使用します。')
     return false
   }
+  
   // Vercelデプロイ時も、APIが利用できない場合はmockデータを使用
   // これにより500エラーを回避
-  return false // 常にmockデータを使用して500エラーを回避
+  // デフォルトでは常にmockデータを使用
+  console.log('[Mock Data] デフォルト設定により、mockデータを使用します。')
+  return false
 }
 
 export async function apiRequest<T>(
@@ -44,9 +52,14 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   // Use mock data if API is not available or forced to use mock data
-  const useMock = !isApiAvailable() || shouldUseMockData() || process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true'
+  // 優先順位: 1. NEXT_PUBLIC_USE_MOCK_DATA環境変数 2. shouldUseMockData() 3. isApiAvailable()
+  const useMock = 
+    process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' ||
+    shouldUseMockData() ||
+    !isApiAvailable()
+  
   if (useMock) {
-    console.log('Using mock data for endpoint:', endpoint)
+    console.log('[Mock Data] Using mock data for endpoint:', endpoint)
     return getMockResponse<T>(endpoint)
   }
 

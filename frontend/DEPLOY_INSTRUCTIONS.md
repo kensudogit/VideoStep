@@ -1,100 +1,136 @@
-# Vercelデプロイ手順（Mockデータ使用）
+# 🚀 Vercel完全公開モードデプロイ - 実行手順
 
-## ✅ デプロイ完了
+## 方法1: 自動デプロイスクリプト（推奨）
 
-Mockデータを使用した完全公開モードでのデプロイが成功しました！
+### ステップ1: デプロイスクリプトを実行
 
-- **本番URL**: https://frontend-n22egn6e9-kensudogits-projects.vercel.app
-- **ステータス**: デプロイ成功
-
-## 実装内容
-
-1. **Mockデータ**: 8つのサンプル動画データを実装
-2. **自動フォールバック**: APIが利用できない場合、自動的にmockデータを使用
-3. **完全公開モード**: バックエンドAPIなしで動作
-
-## デプロイ手順
-
-### 方法1: Vercel CLI（推奨）
-
-```bash
+```cmd
 cd C:\devlop\VideoStep\frontend
-vercel --prod --yes
+EXECUTE_DEPLOY.bat
 ```
 
-### 方法2: Vercelダッシュボード
+または
 
-1. https://vercel.com にアクセス
-2. ログイン
-3. プロジェクト `frontend` を選択
-4. "Deployments" タブを開く
-5. 最新のデプロイメントの "..." メニューから "Redeploy" をクリック
-6. または、GitHubにプッシュすると自動デプロイされます
+```cmd
+cd C:\devlop\VideoStep\frontend
+deploy-vercel-public-mock.bat
+```
 
-### 方法3: GitHub連携（自動デプロイ）
+### ステップ2: 環境変数を設定（必須）
 
-1. 変更をGitHubにプッシュ
-2. Vercelが自動的に検出してデプロイ
+デプロイが完了したら、**必ず**以下を実行してください：
 
-## 重要な設定
+1. **Vercelダッシュボードにアクセス**
+   - https://vercel.com/dashboard
+   - ログイン（必要に応じて）
 
-### 環境変数
+2. **プロジェクトを選択**
+   - デプロイしたプロジェクトをクリック
 
-**重要**: Mockデータを使用する場合は、`NEXT_PUBLIC_API_BASE_URL`環境変数を**設定しないでください**。
+3. **環境変数を設定**
+   - 左メニューから **Settings** をクリック
+   - **Environment Variables** をクリック
+   - **Add New** をクリック
+   - 以下を入力：
+     - **Name**: `NEXT_PUBLIC_USE_MOCK_DATA`
+     - **Value**: `true`
+     - **Environment**: 
+       - ✅ Production
+       - ✅ Preview
+       - ✅ Development
+   - **Save** をクリック
 
-もし設定されている場合は、Vercelダッシュボードで削除してください：
-1. Settings → Environment Variables
-2. `NEXT_PUBLIC_API_BASE_URL` を削除
-3. 再デプロイ
+4. **再デプロイ**
+   - 左メニューから **Deployments** をクリック
+   - 最新のデプロイを選択
+   - **...** メニューから **Redeploy** をクリック
 
-## Mockデータの動作
+## 方法2: Vercelダッシュボードで手動デプロイ
 
-Mockデータは以下の条件で自動的に使用されます：
+### ステップ1: プロジェクトをインポート
 
-1. `NEXT_PUBLIC_API_BASE_URL`が設定されていない
-2. `NEXT_PUBLIC_API_BASE_URL`が`localhost`を含む
-3. APIリクエストが失敗した場合（フォールバック）
+1. Vercelダッシュボード（https://vercel.com）にアクセス
+2. **Add New Project** をクリック
+3. GitHubリポジトリを選択（またはインポート）
 
-## サポートされている機能
+### ステップ2: プロジェクト設定
 
-- ✅ 動画一覧表示（8つのサンプル動画）
-- ✅ 動画詳細表示
-- ✅ コメント表示（一部の動画）
-- ✅ サムネイル画像（自動生成）
+以下の設定を入力：
 
-## デプロイ後の確認
+- **Framework Preset**: Next.js
+- **Root Directory**: `frontend` ⚠️ 重要
+- **Build Command**: `npm run build`
+- **Output Directory**: `.next`
+- **Install Command**: `npm install`
 
-1. デプロイURLにアクセス
-2. ホームページで動画一覧が表示されることを確認
-3. 動画をクリックして詳細ページが表示されることを確認
-4. Mockデータが正常に表示されることを確認
+### ステップ3: 環境変数を設定
+
+**デプロイ前に**環境変数を追加：
+
+1. **Environment Variables** セクションで以下を追加：
+   - **Name**: `NEXT_PUBLIC_USE_MOCK_DATA`
+   - **Value**: `true`
+   - **Environment**: Production, Preview, Development すべて
+
+### ステップ4: デプロイ
+
+**Deploy** ボタンをクリック
+
+## 動作確認
+
+デプロイ完了後：
+
+1. **デプロイURLにアクセス**
+   - Vercelダッシュボードで表示されるURL
+   - 例: `https://your-project.vercel.app`
+
+2. **ブラウザの開発者ツールで確認**
+   - F12キーで開発者ツールを開く
+   - **Console** タブを開く
+   - 以下が表示されれば成功：
+     ```
+     [Mock Data] NEXT_PUBLIC_USE_MOCK_DATA=true が設定されています。mockデータを使用します。
+     [Mock Data] Using mock data for endpoint: /api/videos/public
+     ```
+
+3. **ページの動作確認**
+   - ✅ トップページ: 動画一覧が表示される
+   - ✅ 動画詳細: 動画が再生される
+   - ✅ 検索機能: キーワード検索が動作する
+   - ✅ カテゴリフィルター: カテゴリ別表示が動作する
 
 ## トラブルシューティング
 
-### Mockデータが表示されない
+### Vercel CLIがインストールされていない
 
-1. ブラウザの開発者ツール（F12）を開く
-2. Consoleタブでエラーを確認
-3. NetworkタブでAPIリクエストの状態を確認
-4. `NEXT_PUBLIC_API_BASE_URL`が設定されていないことを確認
+```cmd
+npm install -g vercel
+vercel login
+```
 
-### ビルドエラー
+### ビルドエラーが発生する
 
-1. ローカルでビルドを実行：
-   ```bash
-   cd frontend
-   npm run build
-   ```
-2. エラーを確認して修正
-3. 再度デプロイ
+```cmd
+cd C:\devlop\VideoStep\frontend
+rmdir /s /q .next
+npm install
+npm run build
+```
 
-## 次のステップ
+### 環境変数が反映されない
 
-バックエンドAPIを接続する場合：
+- 環境変数を設定した後、**必ず再デプロイ**してください
+- Production, Preview, Developmentすべてに設定されているか確認
+- ブラウザのキャッシュをクリア（Ctrl+Shift+Delete）
 
-1. Railway/Render/Fly.ioなどにバックエンドAPIをデプロイ
-2. Vercelの環境変数で`NEXT_PUBLIC_API_BASE_URL`を設定
-3. 再デプロイ
+### Root Directoryエラー
 
-詳細は`RAILWAY_DEPLOY.md`を参照してください。
+- Vercelダッシュボードで **Settings** > **General**
+- **Root Directory** を `frontend` に設定
+- 再デプロイ
 
+## 完了！
+
+デプロイが完了すると、誰でもアクセス可能な完全公開モードのサイトが利用できます。
+
+Mockサンプル動画データ（20個）が自動的に表示されます。

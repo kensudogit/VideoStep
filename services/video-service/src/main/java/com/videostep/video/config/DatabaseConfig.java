@@ -294,6 +294,20 @@ public class DatabaseConfig {
                         String errorMessage = e.getMessage();
                         String exceptionType = e.getClass().getSimpleName();
 
+                        // 原因となっている例外も確認（PoolInitializationExceptionの場合）
+                        Throwable cause = e.getCause();
+                        if (cause != null && cause.getMessage() != null) {
+                            String causeMessage = cause.getMessage();
+                            if (errorMessage == null || !errorMessage.contains(causeMessage)) {
+                                // 原因例外のメッセージも含める
+                                if (errorMessage != null) {
+                                    errorMessage = errorMessage + " | Cause: " + causeMessage;
+                                } else {
+                                    errorMessage = "Cause: " + causeMessage;
+                                }
+                            }
+                        }
+
                         // タイムアウトエラーの検出
                         boolean isTimeoutError = false;
                         if (errorMessage != null) {
@@ -561,48 +575,149 @@ public class DatabaseConfig {
      * @return H2データベースを使用するDataSource
      */
     private HikariDataSource createH2DataSource() {
-        System.out.println("DatabaseConfig: Creating H2 in-memory database for fallback (mock data)");
+        System.err.println("DatabaseConfig: H2データベース（mockデータ）の作成を試みます");
+        System.err.println("DatabaseConfig: Attempting to create H2 in-memory database for fallback (mock data)");
 
-        HikariConfig h2Config = new HikariConfig();
-        // H2インメモリデータベースのURL
-        // MODE=MySQL: MySQL互換モードを使用
-        // INIT=CREATE SCHEMA IF NOT EXISTS: スキーマが存在しない場合は作成
-        h2Config.setJdbcUrl(
-                "jdbc:h2:mem:videostep_fallback;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS videostep");
-        h2Config.setDriverClassName("org.h2.Driver");
-        h2Config.setUsername("sa");
-        h2Config.setPassword("");
+        try {
+            HikariConfig h2Config = new HikariConfig();
+            // H2インメモリデータベースのURL
+            // MODE=MySQL: MySQL互換モードを使用
+            // INIT=CREATE SCHEMA IF NOT EXISTS: スキーマが存在しない場合は作成
+            h2Config.setJdbcUrl(
+                    "jdbc:h2:mem:videostep_fallback;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS videostep");
+            h2Config.setDriverClassName("org.h2.Driver");
+            h2Config.setUsername("sa");
+            h2Config.setPassword("");
 
-        // 接続プールの設定
-        h2Config.setMaximumPoolSize(5);
-        h2Config.setMinimumIdle(1);
-        h2Config.setConnectionTimeout(5000);
-        h2Config.setIdleTimeout(300000);
-        h2Config.setMaxLifetime(600000);
-        h2Config.setInitializationFailTimeout(10000);
+            // 接続プールの設定
+            h2Config.setMaximumPoolSize(5);
+            h2Config.setMinimumIdle(1);
+            h2Config.setConnectionTimeout(5000);
+            h2Config.setIdleTimeout(300000);
+            h2Config.setMaxLifetime(600000);
+            h2Config.setInitializationFailTimeout(10000);
 
-        // 接続検証のためのクエリ
-        h2Config.setConnectionTestQuery("SELECT 1");
+            // 接続検証のためのクエリ
+            h2Config.setConnectionTestQuery("SELECT 1");
 
-        HikariDataSource h2DataSource = new HikariDataSource(h2Config);
+            HikariDataSource h2DataSource = new HikariDataSource(h2Config);
 
-        // サンプルデータを投入（基本的なテーブル構造のみ）
-        // 実際のテーブル構造に応じて調整が必要
-        try (Connection conn = h2DataSource.getConnection()) {
-            System.out.println("DatabaseConfig: H2 database connection established successfully");
-            System.out.println("DatabaseConfig: Note: This is a fallback database with mock data");
-            System.out.println("DatabaseConfig: Actual MySQL connection will be retried on next application restart");
+            // サンプルデータを投入（基本的なテーブル構造のみ）
+            // 実際のテーブル構造に応じて調整が必要
+            try (Connection conn = h2DataSource.getConnection()) {
+                System.err.println("DatabaseConfig: H2データベース接続が正常に確立されました");
+                System.err.println("DatabaseConfig: H2 database connection established successfully");
+                System.err.println("DatabaseConfig: 注意: これはフォールバックデータベース（mockデータ）です");
+                System.err.println("DatabaseConfig: Note: This is a fallback database with mock data");
+                System.err.println("DatabaseConfig: 実際のMySQL接続は次回のアプリケーション再起動時に再試行されます");
+                System.err
+                        .println("DatabaseConfig: Actual MySQL connection will be retried on next application restart");
 
-            // ここでサンプルデータを投入する場合は、SQLスクリプトを実行
-            // 例: INSERT INTO ... などのSQLを実行
-            // ただし、実際のテーブル構造が不明なため、ここでは基本的な接続のみ確立
+                // ここでサンプルデータを投入する場合は、SQLスクリプトを実行
+                // 例: INSERT INTO ... などのSQLを実行
+                // ただし、実際のテーブル構造が不明なため、ここでは基本的な接続のみ確立
 
+                return h2DataSource;
+            } catch (Exception e) {
+                System.err.println("DatabaseConfig: エラー - H2データベースの初期化に失敗しました: " + e.getMessage());
+                System.err.println("DatabaseConfig: ERROR - Failed to initialize H2 database: " + e.getMessage());
+                e.printStackTrace();
+
+                // H2の初期化に失敗した場合、DataSourceを閉じてmockデータ用のDataSourceにフォールバック
+                try {
+                    h2DataSource.close();
+                } catch (Exception closeEx) {
+                    // 無視
+                }
+
+                // H2も失敗した場合、mockデータ用のDataSourceを作成
+                System.err.println("DatabaseConfig: H2データベースも失敗したため、mockサンプルデータを使用します");
+                System.err.println("DatabaseConfig: H2 database also failed, using mock sample data");
+                return createMockDataSource();
+            }
         } catch (Exception e) {
-            System.err.println("DatabaseConfig: ERROR - Failed to initialize H2 database: " + e.getMessage());
+            System.err.println("DatabaseConfig: エラー - H2データベースの作成に失敗しました: " + e.getMessage());
+            System.err.println("DatabaseConfig: ERROR - Failed to create H2 database: " + e.getMessage());
             e.printStackTrace();
-            // H2の初期化に失敗した場合でも、DataSourceは返す（後で接続を試みることができる）
-        }
 
-        return h2DataSource;
+            // H2の作成に失敗した場合、mockデータ用のDataSourceを作成
+            System.err.println("DatabaseConfig: H2データベースも失敗したため、mockサンプルデータを使用します");
+            System.err.println("DatabaseConfig: H2 database also failed, using mock sample data");
+            return createMockDataSource();
+        }
+    }
+
+    /**
+     * Mockサンプルデータ用のDataSourceを作成
+     * H2データベースも失敗した場合に使用される
+     */
+    private HikariDataSource createMockDataSource() {
+        System.err.println("DatabaseConfig: Mockサンプルデータ用のDataSourceを作成します");
+        System.err.println("DatabaseConfig: Creating mock sample data DataSource");
+
+        try {
+            HikariConfig mockConfig = new HikariConfig();
+            // よりシンプルなH2設定で再試行
+            mockConfig.setJdbcUrl("jdbc:h2:mem:videostep_mock;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE");
+            mockConfig.setDriverClassName("org.h2.Driver");
+            mockConfig.setUsername("sa");
+            mockConfig.setPassword("");
+
+            // 最小限の接続プール設定
+            mockConfig.setMaximumPoolSize(2);
+            mockConfig.setMinimumIdle(1);
+            mockConfig.setConnectionTimeout(3000);
+            mockConfig.setIdleTimeout(300000);
+            mockConfig.setMaxLifetime(600000);
+            mockConfig.setInitializationFailTimeout(5000);
+            mockConfig.setConnectionTestQuery("SELECT 1");
+
+            HikariDataSource mockDataSource = new HikariDataSource(mockConfig);
+
+            // 接続テスト
+            try (Connection conn = mockDataSource.getConnection()) {
+                System.err.println("DatabaseConfig: Mockサンプルデータ用のDataSourceが正常に作成されました");
+                System.err.println("DatabaseConfig: Mock sample data DataSource created successfully");
+                System.err.println("DatabaseConfig: 注意: これは最小限のmockデータベースです。一部の機能が制限される可能性があります");
+                System.err
+                        .println("DatabaseConfig: Note: This is a minimal mock database. Some features may be limited");
+
+                return mockDataSource;
+            } catch (Exception e) {
+                System.err.println("DatabaseConfig: エラー - Mockサンプルデータ用のDataSourceの初期化に失敗しました: " + e.getMessage());
+                System.err.println(
+                        "DatabaseConfig: ERROR - Failed to initialize mock sample data DataSource: " + e.getMessage());
+                e.printStackTrace();
+
+                // Mockデータソースも失敗した場合、DataSourceを閉じて再スロー
+                try {
+                    mockDataSource.close();
+                } catch (Exception closeEx) {
+                    // 無視
+                }
+
+                // 最後の手段として、エラーログを出力してDataSourceを返す
+                // アプリケーションは起動するが、データベース操作は失敗する可能性がある
+                System.err.println("DatabaseConfig: 警告 - Mockサンプルデータ用のDataSourceも失敗しました");
+                System.err.println("DatabaseConfig: WARNING - Mock sample data DataSource also failed");
+                System.err.println("DatabaseConfig: アプリケーションは起動しますが、データベース操作は失敗する可能性があります");
+                System.err.println("DatabaseConfig: Application will start, but database operations may fail");
+
+                // エラーを記録するが、DataSourceは返す（アプリケーションの起動を優先）
+                return mockDataSource;
+            }
+        } catch (Exception e) {
+            System.err.println("DatabaseConfig: 致命的エラー - Mockサンプルデータ用のDataSourceの作成に失敗しました: " + e.getMessage());
+            System.err.println(
+                    "DatabaseConfig: FATAL ERROR - Failed to create mock sample data DataSource: " + e.getMessage());
+            e.printStackTrace();
+
+            // 最後の手段として、RuntimeExceptionをスロー
+            // ただし、アプリケーションの起動を優先するため、可能な限りDataSourceを返す
+            throw new RuntimeException(
+                    "Failed to create any database connection (MySQL, H2, and Mock all failed). " +
+                            "Please check your database configuration and ensure H2 driver is available.",
+                    e);
+        }
     }
 }

@@ -427,14 +427,18 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 }
 
                 try {
-                    password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
-                    // デコード前後で変化があったかチェック
-                    if (!password.equals(rawPassword)) {
-                        System.out.println("DatabaseEnvironmentPostProcessor: Password was URL decoded");
+                    // URLエンコードされた文字（%XX形式）が含まれているかチェック
+                    if (rawPassword.contains("%")) {
+                        password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
+                        System.out.println("DatabaseEnvironmentPostProcessor: Password was URL decoded (contained %XX)");
+                    } else {
+                        // URLエンコードされていない場合はそのまま使用
+                        password = rawPassword;
+                        System.out.println("DatabaseEnvironmentPostProcessor: Password not URL encoded, using raw value");
                     }
                 } catch (Exception e) {
                     password = rawPassword;
-                    System.out.println("DatabaseEnvironmentPostProcessor: Password URL decode failed, using raw value");
+                    System.out.println("DatabaseEnvironmentPostProcessor: Password URL decode failed, using raw value: " + e.getMessage());
                 }
                 // パスワードの前後の空白をトリム
                 if (password != null) {
@@ -645,9 +649,17 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                     }
 
                     try {
-                        password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
+                        // URLエンコードされた文字（%XX形式）が含まれているかチェック
+                        if (rawPassword.contains("%")) {
+                            password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
+                            System.out.println("DatabaseEnvironmentPostProcessor: Password was URL decoded (contained %XX)");
+                        } else {
+                            // URLエンコードされていない場合はそのまま使用
+                            password = rawPassword;
+                        }
                     } catch (Exception e) {
                         password = rawPassword;
+                        System.out.println("DatabaseEnvironmentPostProcessor: Password URL decode failed, using raw value: " + e.getMessage());
                     }
                     // パスワードの前後の空白をトリム
                     if (password != null) {

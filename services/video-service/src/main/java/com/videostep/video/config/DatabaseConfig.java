@@ -72,16 +72,35 @@ public class DatabaseConfig {
                         int colonIndex = credentials.indexOf(':');
                         if (colonIndex > 0) {
                             if (username == null || username.isEmpty()) {
-                                username = credentials.substring(0, colonIndex);
+                                String rawUsername = credentials.substring(0, colonIndex);
+                                // URLデコードを試みる
+                                try {
+                                    username = java.net.URLDecoder.decode(rawUsername, java.nio.charset.StandardCharsets.UTF_8);
+                                } catch (Exception e) {
+                                    username = rawUsername;
+                                }
+                                username = username.trim();
                             }
                             if (password == null || password.isEmpty()) {
-                                password = credentials.substring(colonIndex + 1);
+                                String rawPassword = credentials.substring(colonIndex + 1);
+                                // URLエンコードされた文字（%XX形式）が含まれているかチェック
+                                if (rawPassword.contains("%")) {
+                                    try {
+                                        password = java.net.URLDecoder.decode(rawPassword, java.nio.charset.StandardCharsets.UTF_8);
+                                    } catch (Exception e) {
+                                        password = rawPassword;
+                                    }
+                                } else {
+                                    password = rawPassword;
+                                }
+                                password = password.trim();
                             }
                         }
                     }
                 } catch (Exception e) {
                     System.out.println(
                             "DatabaseConfig: Failed to extract credentials from DATABASE_URL: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
         }
@@ -214,8 +233,20 @@ public class DatabaseConfig {
                             && (errorMessage.contains("Access denied") || errorMessage.contains("authentication"))) {
                         System.out.println("DatabaseConfig: ERROR - Password authentication failed");
                         System.out.println("DatabaseConfig: Original error: " + errorMessage);
+                        System.out.println("DatabaseConfig: Attempted username: " + username);
+                        System.out.println("DatabaseConfig: Attempted password length: " + (password != null ? password.length() : 0));
+                        System.out.println("DatabaseConfig: JDBC URL: " + jdbcUrl);
+                        
+                        // パスワードが正しくない可能性がある場合の追加情報
+                        System.out.println("DatabaseConfig: TROUBLESHOOTING:");
+                        System.out.println("DatabaseConfig: 1. Verify DATABASE_URL in Railway environment variables");
+                        System.out.println("DatabaseConfig: 2. Check if password contains special characters that need URL encoding");
+                        System.out.println("DatabaseConfig: 3. Verify database user permissions for IP: " + 
+                            (jdbcUrl.contains("@") ? "check connection string" : "check host"));
+                        System.out.println("DatabaseConfig: 4. Try resetting the database password in Railway");
+                        
                         // 認証情報が間違っている可能性が高いため、そのまま例外をスロー
-                        throw new RuntimeException("Database authentication failed. Please check your credentials.", e);
+                        throw new RuntimeException("Database authentication failed. Please check your credentials. See logs above for troubleshooting steps.", e);
                     } else {
                         // その他のエラーの場合は、そのまま例外をスロー
                         throw new RuntimeException("Failed to initialize database connection", e);

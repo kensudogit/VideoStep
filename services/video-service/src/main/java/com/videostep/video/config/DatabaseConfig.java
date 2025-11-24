@@ -75,7 +75,8 @@ public class DatabaseConfig {
                                 String rawUsername = credentials.substring(0, colonIndex);
                                 // URLデコードを試みる
                                 try {
-                                    username = java.net.URLDecoder.decode(rawUsername, java.nio.charset.StandardCharsets.UTF_8);
+                                    username = java.net.URLDecoder.decode(rawUsername,
+                                            java.nio.charset.StandardCharsets.UTF_8);
                                 } catch (Exception e) {
                                     username = rawUsername;
                                 }
@@ -86,7 +87,8 @@ public class DatabaseConfig {
                                 // URLエンコードされた文字（%XX形式）が含まれているかチェック
                                 if (rawPassword.contains("%")) {
                                     try {
-                                        password = java.net.URLDecoder.decode(rawPassword, java.nio.charset.StandardCharsets.UTF_8);
+                                        password = java.net.URLDecoder.decode(rawPassword,
+                                                java.nio.charset.StandardCharsets.UTF_8);
                                     } catch (Exception e) {
                                         password = rawPassword;
                                     }
@@ -234,19 +236,53 @@ public class DatabaseConfig {
                         System.out.println("DatabaseConfig: ERROR - Password authentication failed");
                         System.out.println("DatabaseConfig: Original error: " + errorMessage);
                         System.out.println("DatabaseConfig: Attempted username: " + username);
-                        System.out.println("DatabaseConfig: Attempted password length: " + (password != null ? password.length() : 0));
+                        System.out.println("DatabaseConfig: Attempted password length: "
+                                + (password != null ? password.length() : 0));
                         System.out.println("DatabaseConfig: JDBC URL: " + jdbcUrl);
-                        
+
+                        // DATABASE_URLの情報を出力（デバッグ用）
+                        String databaseUrl = System.getenv("DATABASE_URL");
+                        if (databaseUrl != null && !databaseUrl.isEmpty()) {
+                            // パスワード部分をマスク
+                            String maskedUrl = databaseUrl;
+                            if (maskedUrl.contains("@")) {
+                                int atIndex = maskedUrl.indexOf("@");
+                                String beforeAt = maskedUrl.substring(0, atIndex);
+                                String afterAt = maskedUrl.substring(atIndex);
+                                if (beforeAt.contains(":")) {
+                                    int colonIndex = beforeAt.indexOf(":");
+                                    String userPart = beforeAt.substring(0, colonIndex);
+                                    maskedUrl = userPart + ":****@" + afterAt;
+                                }
+                            }
+                            System.out.println("DatabaseConfig: DATABASE_URL (masked): " +
+                                    maskedUrl.substring(0, Math.min(100, maskedUrl.length())) + "...");
+                        }
+
                         // パスワードが正しくない可能性がある場合の追加情報
                         System.out.println("DatabaseConfig: TROUBLESHOOTING:");
                         System.out.println("DatabaseConfig: 1. Verify DATABASE_URL in Railway environment variables");
-                        System.out.println("DatabaseConfig: 2. Check if password contains special characters that need URL encoding");
-                        System.out.println("DatabaseConfig: 3. Verify database user permissions for IP: " + 
-                            (jdbcUrl.contains("@") ? "check connection string" : "check host"));
+                        System.out.println("DatabaseConfig:    - Go to Railway dashboard > Your service > Variables");
+                        System.out.println(
+                                "DatabaseConfig:    - Check DATABASE_URL format: mysql://user:password@host:port/database");
+                        System.out.println("DatabaseConfig: 2. The extracted password might be incorrect");
+                        System.out.println("DatabaseConfig:    - Current extracted password length: "
+                                + (password != null ? password.length() : 0));
+                        System.out.println("DatabaseConfig:    - Password first char code: "
+                                + (password != null && password.length() > 0 ? (int) password.charAt(0) : "N/A"));
+                        System.out.println("DatabaseConfig: 3. Verify database user permissions");
+                        System.out.println("DatabaseConfig:    - Check if user '" + username + "' exists in MySQL");
+                        System.out.println(
+                                "DatabaseConfig:    - Check if user has permission to connect from the application IP");
                         System.out.println("DatabaseConfig: 4. Try resetting the database password in Railway");
-                        
+                        System.out.println(
+                                "DatabaseConfig:    - Go to Railway dashboard > Your MySQL service > Settings");
+                        System.out.println("DatabaseConfig:    - Reset password and update DATABASE_URL accordingly");
+
                         // 認証情報が間違っている可能性が高いため、そのまま例外をスロー
-                        throw new RuntimeException("Database authentication failed. Please check your credentials. See logs above for troubleshooting steps.", e);
+                        throw new RuntimeException(
+                                "Database authentication failed. Please check your credentials. See logs above for troubleshooting steps.",
+                                e);
                     } else {
                         // その他のエラーの場合は、そのまま例外をスロー
                         throw new RuntimeException("Failed to initialize database connection", e);

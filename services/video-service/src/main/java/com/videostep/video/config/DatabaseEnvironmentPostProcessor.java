@@ -366,18 +366,42 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                 url = url.replace(":5432?", ":3306?");
             }
             // mysql://またはmysqlx://を削除
+            // まず、URLの形式を正規化（mysql:/をmysql://に修正）
+            if (url.startsWith("mysql:/") && !url.startsWith("mysql://")) {
+                System.out.println(
+                        "DatabaseEnvironmentPostProcessor: WARNING - URL format incorrect, fixing mysql:/ to mysql://");
+                url = url.replaceFirst("mysql:/", "mysql://");
+            }
+            if (url.startsWith("mysqlx:/") && !url.startsWith("mysqlx://")) {
+                System.out.println(
+                        "DatabaseEnvironmentPostProcessor: WARNING - URL format incorrect, fixing mysqlx:/ to mysqlx://");
+                url = url.replaceFirst("mysqlx:/", "mysqlx://");
+            }
+
             String scheme = url.startsWith("mysqlx://") ? "mysqlx://" : "mysql://";
+            if (!url.startsWith(scheme)) {
+                throw new IllegalArgumentException("Invalid MySQL URL format. Expected mysql:// or mysqlx://, got: " +
+                        (url.length() > 20 ? url.substring(0, 20) + "..." : url));
+            }
             String urlWithoutScheme = url.substring(scheme.length());
             System.out.println(
                     "DatabaseEnvironmentPostProcessor: URL without scheme length = " + urlWithoutScheme.length());
 
             // @の位置を探す（認証情報とホストの境界）
+            // @@が含まれている場合は最初の@を使用
             int atIndex = urlWithoutScheme.indexOf('@');
-            System.out.println(
-                    "DatabaseEnvironmentPostProcessor: '@' found at index " + atIndex + " in urlWithoutScheme");
             if (atIndex == -1) {
                 throw new IllegalArgumentException("No @ found in DATABASE_URL");
             }
+            // @@が含まれている場合は警告を出力
+            if (urlWithoutScheme.indexOf('@', atIndex + 1) > 0) {
+                System.out.println(
+                        "DatabaseEnvironmentPostProcessor: WARNING - Multiple @ found in URL, using first one");
+                System.out.println("DatabaseEnvironmentPostProcessor: URL contains @@ at positions: " +
+                        urlWithoutScheme.indexOf('@') + " and " + urlWithoutScheme.indexOf('@', atIndex + 1));
+            }
+            System.out.println(
+                    "DatabaseEnvironmentPostProcessor: '@' found at index " + atIndex + " in urlWithoutScheme");
 
             // 認証情報部分を抽出（user:password）
             String credentials = urlWithoutScheme.substring(0, atIndex);
@@ -430,15 +454,18 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                     // URLエンコードされた文字（%XX形式）が含まれているかチェック
                     if (rawPassword.contains("%")) {
                         password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
-                        System.out.println("DatabaseEnvironmentPostProcessor: Password was URL decoded (contained %XX)");
+                        System.out
+                                .println("DatabaseEnvironmentPostProcessor: Password was URL decoded (contained %XX)");
                     } else {
                         // URLエンコードされていない場合はそのまま使用
                         password = rawPassword;
-                        System.out.println("DatabaseEnvironmentPostProcessor: Password not URL encoded, using raw value");
+                        System.out
+                                .println("DatabaseEnvironmentPostProcessor: Password not URL encoded, using raw value");
                     }
                 } catch (Exception e) {
                     password = rawPassword;
-                    System.out.println("DatabaseEnvironmentPostProcessor: Password URL decode failed, using raw value: " + e.getMessage());
+                    System.out.println("DatabaseEnvironmentPostProcessor: Password URL decode failed, using raw value: "
+                            + e.getMessage());
                 }
                 // パスワードの前後の空白をトリム
                 if (password != null) {
@@ -652,14 +679,17 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                         // URLエンコードされた文字（%XX形式）が含まれているかチェック
                         if (rawPassword.contains("%")) {
                             password = URLDecoder.decode(rawPassword, StandardCharsets.UTF_8);
-                            System.out.println("DatabaseEnvironmentPostProcessor: Password was URL decoded (contained %XX)");
+                            System.out.println(
+                                    "DatabaseEnvironmentPostProcessor: Password was URL decoded (contained %XX)");
                         } else {
                             // URLエンコードされていない場合はそのまま使用
                             password = rawPassword;
                         }
                     } catch (Exception e) {
                         password = rawPassword;
-                        System.out.println("DatabaseEnvironmentPostProcessor: Password URL decode failed, using raw value: " + e.getMessage());
+                        System.out.println(
+                                "DatabaseEnvironmentPostProcessor: Password URL decode failed, using raw value: "
+                                        + e.getMessage());
                     }
                     // パスワードの前後の空白をトリム
                     if (password != null) {

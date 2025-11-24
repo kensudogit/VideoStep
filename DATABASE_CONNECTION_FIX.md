@@ -2,11 +2,17 @@
 
 ## 問題の概要
 
-ログファイル `logs.1763952467653.log` を分析した結果、以下のエラーが発生していました：
+ログファイルを分析した結果、以下のエラーが発生していました：
 
 ```
-java.sql.SQLException: Access denied for user 'videostep'@'10.206.169.16' (using password: YES)
+java.sql.SQLException: Access denied for user 'videostep'@'10.208.3.91' (using password: YES)
 ```
+
+**最新のログ分析結果:**
+- パスワードは正しく抽出されている（`videostep`、9文字）
+- 文字コードも正しい（`118,105,100,101,111,115,116,101,112`）
+- しかし、MySQLへの接続が拒否されている
+- **実際のデータベースのパスワードが`DATABASE_URL`のパスワードと一致していない可能性が高い**
 
 ## 原因分析
 
@@ -18,41 +24,72 @@ java.sql.SQLException: Access denied for user 'videostep'@'10.206.169.16' (using
 
 ## 実施した修正
 
-### 1. パスワードのURLデコード処理の改善
+### 1. DATABASE_URLの形式検証と正規化
+
+`DatabaseEnvironmentPostProcessor.java` で、`DATABASE_URL`の形式を検証し、不正な形式を自動的に修正するようにしました：
+
+- `mysql:/`を`mysql://`に自動修正
+- `mysqlx:/`を`mysqlx://`に自動修正
+- `@@`（二重の@）が含まれている場合の警告と処理
+- URL形式の検証を強化
+
+### 2. パスワードのURLデコード処理の改善
 
 `DatabaseEnvironmentPostProcessor.java` と `DatabaseConfig.java` で、パスワードのURLデコード処理を改善しました：
 
 - `%XX`形式のURLエンコードされた文字が含まれている場合のみデコードを実行
 - URLエンコードされていない場合は、そのまま使用
 
-### 2. エラーメッセージの詳細化
+### 3. エラーメッセージの詳細化
 
 `DatabaseConfig.java` で、接続エラーが発生した際に、以下の情報を出力するようにしました：
 
 - 使用されたユーザー名
-- 使用されたパスワードの長さ
+- 使用されたパスワードの長さと最初の文字の文字コード
 - JDBC URL
-- トラブルシューティング手順
+- DATABASE_URL（マスク済み）
+- 詳細なトラブルシューティング手順（Railwayダッシュボードでの確認方法を含む）
 
-### 3. DATABASE_URLからの認証情報抽出の改善
+### 4. DATABASE_URLからの認証情報抽出の改善
 
 `DatabaseConfig.java` で、`DATABASE_URL`から認証情報を抽出する際に、URLデコードとトリム処理を追加しました。
 
+## 根本原因の分析
+
+ログを詳しく分析した結果、以下のことが判明しました：
+
+1. **パスワード抽出は成功**: パスワード`videostep`（9文字）は正しく抽出されています
+2. **文字コードも正しい**: `118,105,100,101,111,115,116,101,112`は`videostep`の文字コードと一致
+3. **接続が拒否される**: MySQLが`Access denied`エラーを返している
+
+**結論**: コード側の問題ではなく、**Railwayのデータベースの実際のパスワードが`DATABASE_URL`に含まれているパスワードと一致していない**可能性が非常に高いです。
+
 ## 次のステップ
 
-### Railwayでの確認事項
+### Railwayでの確認事項（重要）
 
 1. **DATABASE_URLの確認**
-   - Railwayダッシュボードで、`DATABASE_URL`環境変数を確認
-   - パスワードが正しく設定されているか確認
+   - Railwayダッシュボード > あなたのサービス > Variables
+   - `DATABASE_URL`環境変数を確認
+   - 形式: `mysql://user:password@host:port/database`
+   - パスワード部分が正しいか確認
 
-2. **データベースパスワードの確認**
-   - Railwayのデータベースサービスで、実際のパスワードを確認
+2. **データベースパスワードの確認（最重要）**
+   - Railwayダッシュボード > あなたのMySQLサービス > Settings
+   - 実際のデータベースパスワードを確認
    - `DATABASE_URL`のパスワードと一致しているか確認
+   - **不一致の場合は、以下のいずれかを実行:**
+     - オプションA: データベースのパスワードをリセットし、`DATABASE_URL`を更新
+     - オプションB: `DATABASE_URL`のパスワードを実際のデータベースパスワードに更新
 
 3. **ユーザー権限の確認**
-   - ユーザー`videostep`がIPアドレス`10.206.169.16`から接続する権限があるか確認
-   - 必要に応じて、ユーザー権限を更新
+   - ユーザー`videostep`が存在するか確認
+   - ユーザーがIPアドレス`10.208.3.91`（または`%`）から接続する権限があるか確認
+   - MySQLで以下を実行:
+     ```sql
+     SELECT user, host FROM mysql.user WHERE user = 'videostep';
+     SHOW GRANTS FOR 'videostep'@'%';
+     ```
 
 ### トラブルシューティング
 

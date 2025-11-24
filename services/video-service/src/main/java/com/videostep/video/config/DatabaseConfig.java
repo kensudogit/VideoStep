@@ -213,80 +213,151 @@ public class DatabaseConfig {
             // 接続プールの設定
             config.setMaximumPoolSize(10);
             config.setMinimumIdle(2);
-            config.setConnectionTimeout(30000);
+            // 接続タイムアウトを120秒に増やす（Railway環境での接続遅延に対応）
+            config.setConnectionTimeout(120000);
             config.setIdleTimeout(600000);
             config.setMaxLifetime(1800000);
+            // 初期化失敗時のタイムアウトを設定（-1で無制限、ただし推奨されない）
+            config.setInitializationFailTimeout(-1);
 
             // 認証情報が設定されている場合でも、認証に失敗した場合は再接続を試みる
             if (!skipAuthentication && username != null && !username.isEmpty() && password != null
                     && !password.isEmpty()) {
-                try {
-                    HikariDataSource dataSource = new HikariDataSource(config);
-                    // 接続テストを実行
-                    try (Connection conn = dataSource.getConnection()) {
-                        // 接続成功
-                        System.out.println("DatabaseConfig: Connection test successful with authentication");
-                        return dataSource;
-                    }
-                } catch (Exception e) {
-                    // 認証に失敗した場合の処理
-                    String errorMessage = e.getMessage();
-                    if (errorMessage != null
-                            && (errorMessage.contains("Access denied") || errorMessage.contains("authentication"))) {
-                        System.out.println("DatabaseConfig: ERROR - Password authentication failed");
-                        System.out.println("DatabaseConfig: Original error: " + errorMessage);
-                        System.out.println("DatabaseConfig: Attempted username: " + username);
-                        System.out.println("DatabaseConfig: Attempted password length: "
-                                + (password != null ? password.length() : 0));
-                        System.out.println("DatabaseConfig: JDBC URL: " + jdbcUrl);
+                // リトライロジックを追加（最大3回、各リトライの間に5秒待機）
+                int maxRetries = 3;
+                int retryDelayMs = 5000;
+                Exception lastException = null;
 
-                        // DATABASE_URLの情報を出力（デバッグ用）
-                        String databaseUrl = System.getenv("DATABASE_URL");
-                        if (databaseUrl != null && !databaseUrl.isEmpty()) {
-                            // パスワード部分をマスク
-                            String maskedUrl = databaseUrl;
-                            if (maskedUrl.contains("@")) {
-                                int atIndex = maskedUrl.indexOf("@");
-                                String beforeAt = maskedUrl.substring(0, atIndex);
-                                String afterAt = maskedUrl.substring(atIndex);
-                                if (beforeAt.contains(":")) {
-                                    int colonIndex = beforeAt.indexOf(":");
-                                    String userPart = beforeAt.substring(0, colonIndex);
-                                    maskedUrl = userPart + ":****@" + afterAt;
-                                }
-                            }
-                            System.out.println("DatabaseConfig: DATABASE_URL (masked): " +
-                                    maskedUrl.substring(0, Math.min(100, maskedUrl.length())) + "...");
+                for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        System.out.println("DatabaseConfig: Attempting database connection (attempt " + attempt + "/"
+                                + maxRetries + ")");
+                        HikariDataSource dataSource = new HikariDataSource(config);
+                        // 接続テストを実行
+                        try (Connection conn = dataSource.getConnection()) {
+                            // 接続成功
+                            System.out.println("DatabaseConfig: Connection test successful with authentication");
+                            return dataSource;
+                        }
+                    } catch (Exception e) {
+                        lastException = e;
+                        String errorMessage = e.getMessage();
+                        String exceptionType = e.getClass().getSimpleName();
+
+                        System.out
+                                .println("DatabaseConfig: Connection attempt " + attempt + " failed: " + exceptionType);
+                        if (errorMessage != null) {
+                            System.out.println("DatabaseConfig: Error message: " + errorMessage);
                         }
 
-                        // パスワードが正しくない可能性がある場合の追加情報
-                        System.out.println("DatabaseConfig: TROUBLESHOOTING:");
-                        System.out.println("DatabaseConfig: 1. Verify DATABASE_URL in Railway environment variables");
-                        System.out.println("DatabaseConfig:    - Go to Railway dashboard > Your service > Variables");
-                        System.out.println(
-                                "DatabaseConfig:    - Check DATABASE_URL format: mysql://user:password@host:port/database");
-                        System.out.println("DatabaseConfig: 2. The extracted password might be incorrect");
-                        System.out.println("DatabaseConfig:    - Current extracted password length: "
-                                + (password != null ? password.length() : 0));
-                        System.out.println("DatabaseConfig:    - Password first char code: "
-                                + (password != null && password.length() > 0 ? (int) password.charAt(0) : "N/A"));
-                        System.out.println("DatabaseConfig: 3. Verify database user permissions");
-                        System.out.println("DatabaseConfig:    - Check if user '" + username + "' exists in MySQL");
-                        System.out.println(
-                                "DatabaseConfig:    - Check if user has permission to connect from the application IP");
-                        System.out.println("DatabaseConfig: 4. Try resetting the database password in Railway");
-                        System.out.println(
-                                "DatabaseConfig:    - Go to Railway dashboard > Your MySQL service > Settings");
-                        System.out.println("DatabaseConfig:    - Reset password and update DATABASE_URL accordingly");
+                        // 接続タイムアウトまたは通信エラーの場合のみリトライ
+                        boolean isRetryable = false;
+                        if (errorMessage != null) {
+                            isRetryable = errorMessage.contains("Communications link failure")
+                                    || errorMessage.contains("Connect timed out")
+                                    || errorMessage.contains("Connection refused")
+                                    || errorMessage.contains("Network is unreachable")
+                                    || exceptionType.contains("SocketTimeoutException")
+                                    || exceptionType.contains("CommunicationsException");
+                        }
 
-                        // 認証情報が間違っている可能性が高いため、そのまま例外をスロー
-                        throw new RuntimeException(
-                                "Database authentication failed. Please check your credentials. See logs above for troubleshooting steps.",
-                                e);
-                    } else {
-                        // その他のエラーの場合は、そのまま例外をスロー
-                        throw new RuntimeException("Failed to initialize database connection", e);
+                        if (isRetryable && attempt < maxRetries) {
+                            System.out.println("DatabaseConfig: Retryable error detected. Waiting "
+                                    + (retryDelayMs / 1000) + " seconds before retry...");
+                            try {
+                                Thread.sleep(retryDelayMs);
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                                throw new RuntimeException("Connection retry interrupted", ie);
+                            }
+                            // リトライ時に待機時間を増やす（指数バックオフ）
+                            retryDelayMs = (int) (retryDelayMs * 1.5);
+                            continue;
+                        }
+
+                        // 認証エラーの場合
+                        if (errorMessage != null
+                                && (errorMessage.contains("Access denied")
+                                        || errorMessage.contains("authentication"))) {
+                            System.out.println("DatabaseConfig: ERROR - Password authentication failed");
+                            System.out.println("DatabaseConfig: Original error: " + errorMessage);
+                            System.out.println("DatabaseConfig: Attempted username: " + username);
+                            System.out.println("DatabaseConfig: Attempted password length: "
+                                    + (password != null ? password.length() : 0));
+                            System.out.println("DatabaseConfig: JDBC URL: " + jdbcUrl);
+
+                            // DATABASE_URLの情報を出力（デバッグ用）
+                            String databaseUrl = System.getenv("DATABASE_URL");
+                            if (databaseUrl != null && !databaseUrl.isEmpty()) {
+                                // パスワード部分をマスク
+                                String maskedUrl = databaseUrl;
+                                if (maskedUrl.contains("@")) {
+                                    int atIndex = maskedUrl.indexOf("@");
+                                    String beforeAt = maskedUrl.substring(0, atIndex);
+                                    String afterAt = maskedUrl.substring(atIndex);
+                                    if (beforeAt.contains(":")) {
+                                        int colonIndex = beforeAt.indexOf(":");
+                                        String userPart = beforeAt.substring(0, colonIndex);
+                                        maskedUrl = userPart + ":****@" + afterAt;
+                                    }
+                                }
+                                System.out.println("DatabaseConfig: DATABASE_URL (masked): " +
+                                        maskedUrl.substring(0, Math.min(100, maskedUrl.length())) + "...");
+                            }
+
+                            // パスワードが正しくない可能性がある場合の追加情報
+                            System.out.println("DatabaseConfig: TROUBLESHOOTING:");
+                            System.out
+                                    .println("DatabaseConfig: 1. Verify DATABASE_URL in Railway environment variables");
+                            System.out
+                                    .println("DatabaseConfig:    - Go to Railway dashboard > Your service > Variables");
+                            System.out.println(
+                                    "DatabaseConfig:    - Check DATABASE_URL format: mysql://user:password@host:port/database");
+                            System.out.println("DatabaseConfig: 2. The extracted password might be incorrect");
+                            System.out.println("DatabaseConfig:    - Current extracted password length: "
+                                    + (password != null ? password.length() : 0));
+                            System.out.println("DatabaseConfig:    - Password first char code: "
+                                    + (password != null && password.length() > 0 ? (int) password.charAt(0) : "N/A"));
+                            System.out.println("DatabaseConfig: 3. Verify database user permissions");
+                            System.out.println("DatabaseConfig:    - Check if user '" + username + "' exists in MySQL");
+                            System.out.println(
+                                    "DatabaseConfig:    - Check if user has permission to connect from the application IP");
+                            System.out.println("DatabaseConfig: 4. Try resetting the database password in Railway");
+                            System.out.println(
+                                    "DatabaseConfig:    - Go to Railway dashboard > Your MySQL service > Settings");
+                            System.out
+                                    .println("DatabaseConfig:    - Reset password and update DATABASE_URL accordingly");
+
+                            // 認証情報が間違っている可能性が高いため、そのまま例外をスロー
+                            throw new RuntimeException(
+                                    "Database authentication failed. Please check your credentials. See logs above for troubleshooting steps.",
+                                    e);
+                        }
+
+                        // リトライ不可能なエラー、または最大リトライ回数に達した場合
+                        if (attempt == maxRetries) {
+                            System.out.println("DatabaseConfig: ERROR - All connection attempts failed after "
+                                    + maxRetries + " retries");
+                            System.out.println("DatabaseConfig: Last error type: " + exceptionType);
+                            System.out.println("DatabaseConfig: Last error message: "
+                                    + (errorMessage != null ? errorMessage : "N/A"));
+                            System.out.println("DatabaseConfig: JDBC URL: " + jdbcUrl);
+                            System.out.println("DatabaseConfig: TROUBLESHOOTING:");
+                            System.out.println("DatabaseConfig: 1. Check if MySQL service is running in Railway");
+                            System.out.println("DatabaseConfig: 2. Verify network connectivity to " + jdbcUrl);
+                            System.out.println("DatabaseConfig: 3. Check Railway service logs for MySQL service");
+                            System.out.println(
+                                    "DatabaseConfig: 4. Ensure MySQL service is accessible from your application service");
+
+                            throw new RuntimeException(
+                                    "Failed to initialize database connection after " + maxRetries + " attempts", e);
+                        }
                     }
+                }
+
+                // ここに到達することはないはずだが、念のため
+                if (lastException != null) {
+                    throw new RuntimeException("Failed to initialize database connection", lastException);
                 }
             }
 

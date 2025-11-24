@@ -377,15 +377,21 @@ public class DatabaseConfig {
                         }
 
                         // 認証エラーの場合
+                        boolean isAuthError = false;
                         if (errorMessage != null
                                 && (errorMessage.contains("Access denied")
                                         || errorMessage.contains("authentication"))) {
-                            System.out.println("DatabaseConfig: ERROR - Password authentication failed");
-                            System.out.println("DatabaseConfig: Original error: " + errorMessage);
-                            System.out.println("DatabaseConfig: Attempted username: " + username);
-                            System.out.println("DatabaseConfig: Attempted password length: "
+                            isAuthError = true;
+                        }
+
+                        if (isAuthError) {
+                            System.err.println("DatabaseConfig: 認証エラー - データベース認証に失敗しました");
+                            System.err.println("DatabaseConfig: ERROR - Password authentication failed");
+                            System.err.println("DatabaseConfig: Original error: " + errorMessage);
+                            System.err.println("DatabaseConfig: Attempted username: " + username);
+                            System.err.println("DatabaseConfig: Attempted password length: "
                                     + (password != null ? password.length() : 0));
-                            System.out.println("DatabaseConfig: JDBC URL: " + jdbcUrl);
+                            System.err.println("DatabaseConfig: JDBC URL: " + jdbcUrl);
 
                             // DATABASE_URLの情報を出力（デバッグ用）
                             String databaseUrl = System.getenv("DATABASE_URL");
@@ -402,41 +408,73 @@ public class DatabaseConfig {
                                         maskedUrl = userPart + ":****@" + afterAt;
                                     }
                                 }
-                                System.out.println("DatabaseConfig: DATABASE_URL (masked): " +
+                                System.err.println("DatabaseConfig: DATABASE_URL (masked): " +
                                         maskedUrl.substring(0, Math.min(100, maskedUrl.length())) + "...");
                             }
 
                             // パスワードが正しくない可能性がある場合の追加情報
-                            System.out.println("DatabaseConfig: TROUBLESHOOTING:");
-                            System.out
+                            System.err.println("DatabaseConfig: TROUBLESHOOTING:");
+                            System.err
                                     .println("DatabaseConfig: 1. Verify DATABASE_URL in Railway environment variables");
-                            System.out
+                            System.err
                                     .println("DatabaseConfig:    - Go to Railway dashboard > Your service > Variables");
-                            System.out.println(
+                            System.err.println(
                                     "DatabaseConfig:    - Check DATABASE_URL format: mysql://user:password@host:port/database");
-                            System.out.println("DatabaseConfig: 2. The extracted password might be incorrect");
-                            System.out.println("DatabaseConfig:    - Current extracted password length: "
+                            System.err.println("DatabaseConfig: 2. The extracted password might be incorrect");
+                            System.err.println("DatabaseConfig:    - Current extracted password length: "
                                     + (password != null ? password.length() : 0));
-                            System.out.println("DatabaseConfig:    - Password first char code: "
+                            System.err.println("DatabaseConfig:    - Password first char code: "
                                     + (password != null && password.length() > 0 ? (int) password.charAt(0) : "N/A"));
-                            System.out.println("DatabaseConfig: 3. Verify database user permissions");
-                            System.out.println("DatabaseConfig:    - Check if user '" + username + "' exists in MySQL");
-                            System.out.println(
+                            System.err.println("DatabaseConfig: 3. Verify database user permissions");
+                            System.err.println("DatabaseConfig:    - Check if user '" + username + "' exists in MySQL");
+                            System.err.println(
                                     "DatabaseConfig:    - Check if user has permission to connect from the application IP");
-                            System.out.println("DatabaseConfig: 4. Try resetting the database password in Railway");
-                            System.out.println(
+                            System.err.println("DatabaseConfig: 4. Try resetting the database password in Railway");
+                            System.err.println(
                                     "DatabaseConfig:    - Go to Railway dashboard > Your MySQL service > Settings");
-                            System.out
+                            System.err
                                     .println("DatabaseConfig:    - Reset password and update DATABASE_URL accordingly");
 
-                            // 認証情報が間違っている可能性が高いため、そのまま例外をスロー
-                            throw new RuntimeException(
-                                    "Database authentication failed. Please check your credentials. See logs above for troubleshooting steps.",
-                                    e);
+                            // 最大リトライ回数に達した場合、または最初の試行で認証エラーが発生した場合
+                            if (attempt == maxRetries || attempt == 1) {
+                                System.err.println("DatabaseConfig: フォールバック - H2データベース（mockデータ）を使用して処理を継続します");
+                                System.err.println(
+                                        "DatabaseConfig: FALLBACK - Using H2 database (mock data) to continue processing");
+
+                                // 認証エラーが発生した場合、H2データベースを使用して処理を継続
+                                return createH2DataSource();
+                            }
+
+                            // まだリトライ可能な場合は、リトライを続ける
+                            if (attempt < maxRetries) {
+                                System.err.println(
+                                        "DatabaseConfig: 認証エラー - リトライします (試行 " + attempt + "/" + maxRetries + ")");
+                                System.err.println("DatabaseConfig: Authentication error detected. Retrying in "
+                                        + (retryDelayMs / 1000) + " seconds...");
+                                try {
+                                    Thread.sleep(retryDelayMs);
+                                } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                    System.err.println("DatabaseConfig: 認証エラー - リトライが中断されました");
+                                    System.err.println("DatabaseConfig: Connection retry interrupted");
+                                    throw new RuntimeException("Connection retry interrupted", ie);
+                                }
+                                // リトライ時に待機時間を増やす（指数バックオフ）
+                                retryDelayMs = (int) (retryDelayMs * 1.5);
+                                continue;
+                            }
                         }
 
                         // リトライ不可能なエラー、または最大リトライ回数に達した場合
                         if (attempt == maxRetries) {
+                            // 認証エラーの検出
+                            boolean isAuthErrorAtMaxRetries = false;
+                            if (errorMessage != null
+                                    && (errorMessage.contains("Access denied")
+                                            || errorMessage.contains("authentication"))) {
+                                isAuthErrorAtMaxRetries = true;
+                            }
+
                             if (isTimeoutError) {
                                 System.err.println("DatabaseConfig: 時間切れ - すべての接続試行がタイムアウトしました");
                                 System.err.println("DatabaseConfig: Timeout - All connection attempts timed out after "
@@ -459,6 +497,26 @@ public class DatabaseConfig {
                                         "DatabaseConfig: FALLBACK - Using H2 database (mock data) to continue processing");
 
                                 // タイムアウトが発生した場合、H2データベースを使用して処理を継続
+                                return createH2DataSource();
+                            } else if (isAuthErrorAtMaxRetries) {
+                                System.err.println("DatabaseConfig: 認証エラー - すべての接続試行が認証エラーで失敗しました");
+                                System.err.println(
+                                        "DatabaseConfig: Authentication error - All connection attempts failed after "
+                                                + maxRetries + " retries");
+                                System.err.println("DatabaseConfig: Last error type: " + exceptionType);
+                                System.err.println("DatabaseConfig: Last error message: "
+                                        + (errorMessage != null ? errorMessage : "N/A"));
+                                System.err.println("DatabaseConfig: JDBC URL: " + jdbcUrl);
+                                System.err.println("DatabaseConfig: TROUBLESHOOTING:");
+                                System.err.println("DatabaseConfig: 1. DATABASE_URLの認証情報を確認してください");
+                                System.err.println("DatabaseConfig: 2. MySQLユーザーのパスワードが正しいか確認してください");
+                                System.err.println("DatabaseConfig: 3. MySQLユーザーの権限を確認してください");
+                                System.err.println("DatabaseConfig: 4. RailwayのMySQLサービスのログを確認してください");
+                                System.err.println("DatabaseConfig: フォールバック - H2データベース（mockデータ）を使用して処理を継続します");
+                                System.err.println(
+                                        "DatabaseConfig: FALLBACK - Using H2 database (mock data) to continue processing");
+
+                                // 認証エラーが発生した場合、H2データベースを使用して処理を継続
                                 return createH2DataSource();
                             } else {
                                 System.out.println("DatabaseConfig: ERROR - All connection attempts failed after "

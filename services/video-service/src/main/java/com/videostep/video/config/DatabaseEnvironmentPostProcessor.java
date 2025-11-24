@@ -367,15 +367,26 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             }
             // mysql://またはmysqlx://を削除
             // まず、URLの形式を正規化（mysql:/をmysql://に修正）
+            // mysql:/ や mysql:/@ のような形式を修正
             if (url.startsWith("mysql:/") && !url.startsWith("mysql://")) {
                 System.out.println(
                         "DatabaseEnvironmentPostProcessor: WARNING - URL format incorrect, fixing mysql:/ to mysql://");
-                url = url.replaceFirst("mysql:/", "mysql://");
+                // mysql:/@ のような形式を mysql:// に修正
+                if (url.startsWith("mysql:/@")) {
+                    url = "mysql://" + url.substring(7); // "mysql:/@" の後の部分を取得
+                } else {
+                    url = url.replaceFirst("mysql:/", "mysql://");
+                }
             }
             if (url.startsWith("mysqlx:/") && !url.startsWith("mysqlx://")) {
                 System.out.println(
                         "DatabaseEnvironmentPostProcessor: WARNING - URL format incorrect, fixing mysqlx:/ to mysqlx://");
-                url = url.replaceFirst("mysqlx:/", "mysqlx://");
+                // mysqlx:/@ のような形式を mysqlx:// に修正
+                if (url.startsWith("mysqlx:/@")) {
+                    url = "mysqlx://" + url.substring(9); // "mysqlx:/@" の後の部分を取得
+                } else {
+                    url = url.replaceFirst("mysqlx:/", "mysqlx://");
+                }
             }
 
             String scheme = url.startsWith("mysqlx://") ? "mysqlx://" : "mysql://";
@@ -389,16 +400,33 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
 
             // @の位置を探す（認証情報とホストの境界）
             // @@が含まれている場合は最初の@を使用
-            int atIndex = urlWithoutScheme.indexOf('@');
+            // ただし、パスワードに@が含まれている可能性があるため、最後の@を使用する
+            // 通常の形式: user:password@host:port/database
+            // パスワードに@が含まれる場合: user:p@ssw@rd@host:port/database
+            // この場合、最後の@が認証情報とホストの境界となる
+            int atIndex = urlWithoutScheme.lastIndexOf('@');
             if (atIndex == -1) {
                 throw new IllegalArgumentException("No @ found in DATABASE_URL");
             }
-            // @@が含まれている場合は警告を出力
-            if (urlWithoutScheme.indexOf('@', atIndex + 1) > 0) {
+            // @@が含まれている場合は警告を出力し、最初の@を使用（パスワードに@が含まれていない場合）
+            int firstAtIndex = urlWithoutScheme.indexOf('@');
+            if (firstAtIndex != atIndex && firstAtIndex >= 0) {
                 System.out.println(
-                        "DatabaseEnvironmentPostProcessor: WARNING - Multiple @ found in URL, using first one");
-                System.out.println("DatabaseEnvironmentPostProcessor: URL contains @@ at positions: " +
-                        urlWithoutScheme.indexOf('@') + " and " + urlWithoutScheme.indexOf('@', atIndex + 1));
+                        "DatabaseEnvironmentPostProcessor: WARNING - Multiple @ found in URL");
+                System.out.println("DatabaseEnvironmentPostProcessor: First @ at index: " + firstAtIndex);
+                System.out.println("DatabaseEnvironmentPostProcessor: Last @ at index: " + atIndex);
+                // 最初の@と最後の@の間を確認
+                String betweenAts = urlWithoutScheme.substring(firstAtIndex + 1, atIndex);
+                // もし最初の@の後に:が含まれていれば、それはパスワードの一部である可能性が高い
+                // そうでなければ、最初の@を使用
+                if (!betweenAts.contains(":")) {
+                    System.out.println(
+                            "DatabaseEnvironmentPostProcessor: Using first @ (password may not contain @)");
+                    atIndex = firstAtIndex;
+                } else {
+                    System.out.println(
+                            "DatabaseEnvironmentPostProcessor: Using last @ (password may contain @)");
+                }
             }
             System.out.println(
                     "DatabaseEnvironmentPostProcessor: '@' found at index " + atIndex + " in urlWithoutScheme");

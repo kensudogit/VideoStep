@@ -4,6 +4,13 @@ server:
 spring:
   application:
     name: video-service
+  cloud:
+    # サービスディスカバリーを無効化（Eurekaサーバーが利用できない場合でもアプリケーションを起動できるようにする）
+    discovery:
+      enabled: ${SPRING_CLOUD_DISCOVERY_ENABLED:false}
+    # Eurekaサーバーが利用できない場合でもアプリケーションを起動できるようにする
+    loadbalancer:
+      enabled: false
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:${MYSQL_USER:videostep}}}
@@ -25,8 +32,23 @@ spring:
 
 eureka:
   client:
+    # Eurekaクライアントを完全に無効化（Eurekaサーバーが利用できない場合でもアプリケーションを起動できるようにする）
+    enabled: ${EUREKA_CLIENT_ENABLED:false}
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://service-registry:8761/eureka/}
+    # Eurekaサーバーが利用できない場合でもアプリケーションを起動できるようにする
+    register-with-eureka: ${EUREKA_CLIENT_REGISTER_WITH_EUREKA:false}
+    fetch-registry: ${EUREKA_CLIENT_FETCH_REGISTRY:false}
+    # 接続エラーを無視する設定
+    healthcheck:
+      enabled: false
+    # 接続タイムアウトとリトライ設定（Eurekaサーバーが利用できない場合のエラーを抑制）
+    initial-instance-info-replication-interval-seconds: 5
+    instance-info-replication-interval-seconds: 5
+    # Eurekaサーバーへの接続が失敗した場合の処理
+    on-demand-update-status-change: true
+    # 接続エラーをログに記録しない（WARNレベル以下に抑制）
+    should-on-demand-update-status-change: false
 
 aws:
   s3:
@@ -36,6 +58,11 @@ aws:
 logging:
   level:
     com.videostep: DEBUG
+    # Eureka接続エラーを抑制（Eurekaサーバーが利用できない場合でもアプリケーションを起動できるようにする）
+    com.netflix.discovery: WARN
+    com.netflix.eureka: WARN
+    org.springframework.cloud.netflix.eureka: WARN
+    org.springframework.cloud.netflix.eureka.http: WARN
 
 openai:
   api:

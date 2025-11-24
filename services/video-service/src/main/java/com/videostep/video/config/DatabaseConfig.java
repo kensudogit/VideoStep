@@ -212,13 +212,17 @@ public class DatabaseConfig {
 
             // 接続プールの設定
             config.setMaximumPoolSize(10);
-            config.setMinimumIdle(2);
-            // 接続タイムアウトを120秒に増やす（Railway環境での接続遅延に対応）
-            config.setConnectionTimeout(120000);
+            // 最小アイドル接続数を1に設定（初期接続を確立）
+            config.setMinimumIdle(1);
+            // 接続タイムアウトを30秒に設定（プールからの接続取得タイムアウト）
+            config.setConnectionTimeout(30000);
             config.setIdleTimeout(600000);
             config.setMaxLifetime(1800000);
-            // 初期化失敗時のタイムアウトを設定（-1で無制限、ただし推奨されない）
-            config.setInitializationFailTimeout(-1);
+            // 初期化失敗時のタイムアウトを60秒に設定（プール初期化のタイムアウト）
+            // これにより、プールが初期化されるまで待機する
+            config.setInitializationFailTimeout(60000);
+            // 接続検証のためのクエリ
+            config.setConnectionTestQuery("SELECT 1");
 
             // 認証情報が設定されている場合でも、認証に失敗した場合は再接続を試みる
             if (!skipAuthentication && username != null && !username.isEmpty() && password != null
@@ -229,11 +233,21 @@ public class DatabaseConfig {
                 Exception lastException = null;
 
                 for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                    HikariDataSource dataSource = null;
                     try {
                         System.out.println("DatabaseConfig: Attempting database connection (attempt " + attempt + "/"
                                 + maxRetries + ")");
-                        HikariDataSource dataSource = new HikariDataSource(config);
+                        dataSource = new HikariDataSource(config);
+
+                        // HikariCPの接続プールが初期化されるまで少し待機
+                        // プールの初期化は非同期で行われるため、接続取得前に待機が必要
+                        System.out.println("DatabaseConfig: Waiting for connection pool initialization...");
+                        Thread.sleep(3000); // 3秒待機（プール初期化と最初の接続確立の時間）
+
                         // 接続テストを実行
+                        // initializationFailTimeoutが設定されているため、HikariCPが自動的に
+                        // プールの初期化を待機するが、念のため少し待機してから接続を取得
+                        System.out.println("DatabaseConfig: Attempting to get connection from pool...");
                         try (Connection conn = dataSource.getConnection()) {
                             // 接続成功
                             System.out.println("DatabaseConfig: Connection test successful with authentication");
@@ -250,15 +264,27 @@ public class DatabaseConfig {
                             System.out.println("DatabaseConfig: Error message: " + errorMessage);
                         }
 
-                        // 接続タイムアウトまたは通信エラーの場合のみリトライ
+                        // データソースをクリーンアップ
+                        if (dataSource != null) {
+                            try {
+                                dataSource.close();
+                            } catch (Exception closeEx) {
+                                System.out.println("DatabaseConfig: Error closing dataSource: " + closeEx.getMessage());
+                            }
+                        }
+
+                        // 接続タイムアウト、通信エラー、またはプール初期化エラーの場合のみリトライ
                         boolean isRetryable = false;
                         if (errorMessage != null) {
                             isRetryable = errorMessage.contains("Communications link failure")
                                     || errorMessage.contains("Connect timed out")
                                     || errorMessage.contains("Connection refused")
                                     || errorMessage.contains("Network is unreachable")
+                                    || errorMessage.contains("Connection is not available")
+                                    || errorMessage.contains("request timed out")
                                     || exceptionType.contains("SocketTimeoutException")
-                                    || exceptionType.contains("CommunicationsException");
+                                    || exceptionType.contains("CommunicationsException")
+                                    || exceptionType.contains("SQLTransientConnectionException");
                         }
 
                         if (isRetryable && attempt < maxRetries) {

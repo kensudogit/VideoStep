@@ -399,33 +399,44 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
                     "DatabaseEnvironmentPostProcessor: URL without scheme length = " + urlWithoutScheme.length());
 
             // @の位置を探す（認証情報とホストの境界）
-            // @@が含まれている場合は最初の@を使用
-            // ただし、パスワードに@が含まれている可能性があるため、最後の@を使用する
+            // @@が連続している場合は最初の@を使用（DATABASE_URLの形式が不正な場合）
             // 通常の形式: user:password@host:port/database
             // パスワードに@が含まれる場合: user:p@ssw@rd@host:port/database
-            // この場合、最後の@が認証情報とホストの境界となる
-            int atIndex = urlWithoutScheme.lastIndexOf('@');
-            if (atIndex == -1) {
+            // @@が連続している場合: user:password@@host:port/database（形式が不正）
+            int firstAtIndex = urlWithoutScheme.indexOf('@');
+            if (firstAtIndex == -1) {
                 throw new IllegalArgumentException("No @ found in DATABASE_URL");
             }
-            // @@が含まれている場合は警告を出力し、最初の@を使用（パスワードに@が含まれていない場合）
-            int firstAtIndex = urlWithoutScheme.indexOf('@');
-            if (firstAtIndex != atIndex && firstAtIndex >= 0) {
+            int atIndex = firstAtIndex;
+
+            // @@が連続している場合は最初の@を使用
+            if (firstAtIndex + 1 < urlWithoutScheme.length() && urlWithoutScheme.charAt(firstAtIndex + 1) == '@') {
                 System.out.println(
-                        "DatabaseEnvironmentPostProcessor: WARNING - Multiple @ found in URL");
+                        "DatabaseEnvironmentPostProcessor: WARNING - @@ found in URL, using first @");
                 System.out.println("DatabaseEnvironmentPostProcessor: First @ at index: " + firstAtIndex);
-                System.out.println("DatabaseEnvironmentPostProcessor: Last @ at index: " + atIndex);
-                // 最初の@と最後の@の間を確認
-                String betweenAts = urlWithoutScheme.substring(firstAtIndex + 1, atIndex);
-                // もし最初の@の後に:が含まれていれば、それはパスワードの一部である可能性が高い
-                // そうでなければ、最初の@を使用
-                if (!betweenAts.contains(":")) {
+                // 最初の@を使用（@@が連続している場合は形式が不正）
+                atIndex = firstAtIndex;
+            } else {
+                // 複数の@がある場合（パスワードに@が含まれている可能性）
+                int lastAtIndex = urlWithoutScheme.lastIndexOf('@');
+                if (lastAtIndex != firstAtIndex && lastAtIndex > 0) {
                     System.out.println(
-                            "DatabaseEnvironmentPostProcessor: Using first @ (password may not contain @)");
-                    atIndex = firstAtIndex;
-                } else {
-                    System.out.println(
-                            "DatabaseEnvironmentPostProcessor: Using last @ (password may contain @)");
+                            "DatabaseEnvironmentPostProcessor: WARNING - Multiple @ found in URL");
+                    System.out.println("DatabaseEnvironmentPostProcessor: First @ at index: " + firstAtIndex);
+                    System.out.println("DatabaseEnvironmentPostProcessor: Last @ at index: " + lastAtIndex);
+                    // 最初の@と最後の@の間を確認
+                    String betweenAts = urlWithoutScheme.substring(firstAtIndex + 1, lastAtIndex);
+                    // もし最初の@の後に:が含まれていれば、それはパスワードの一部である可能性が高い
+                    // そうでなければ、最初の@を使用
+                    if (!betweenAts.contains(":")) {
+                        System.out.println(
+                                "DatabaseEnvironmentPostProcessor: Using first @ (password may not contain @)");
+                        atIndex = firstAtIndex;
+                    } else {
+                        System.out.println(
+                                "DatabaseEnvironmentPostProcessor: Using last @ (password may contain @)");
+                        atIndex = lastAtIndex;
+                    }
                 }
             }
             System.out.println(

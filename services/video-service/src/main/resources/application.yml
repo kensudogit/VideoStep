@@ -32,11 +32,12 @@ spring:
 
 eureka:
   client:
-    # Eurekaクライアントを完全に無効化（Eurekaサーバーが利用できない場合でもアプリケーションを起動できるようにする）
+    # Eurekaクライアント設定（Railwayでは環境変数で上書き可能）
     enabled: ${EUREKA_CLIENT_ENABLED:false}
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://service-registry:8761/eureka/}
-    # Eurekaサーバーが利用できない場合でもアプリケーションを起動できるようにする
+      # RailwayではパブリックURLを使用（環境変数で設定必須）
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:https://service-registry-production-6ee0.up.railway.app/eureka/}
+    # Eurekaサーバーへの登録設定（環境変数で上書き可能）
     register-with-eureka: ${EUREKA_CLIENT_REGISTER_WITH_EUREKA:false}
     fetch-registry: ${EUREKA_CLIENT_FETCH_REGISTRY:false}
     # 接続エラーを無視する設定

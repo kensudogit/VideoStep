@@ -119,14 +119,14 @@ export default function Home() {
         <div className="container mx-auto px-4 py-20 md:py-32 relative z-10">
           <div className="max-w-5xl mx-auto text-center animate-fade-in">
             <div className="inline-block mb-6 px-4 py-2 bg-blue-100/80 dark:bg-blue-900/30 rounded-full backdrop-blur-sm border border-blue-200/50 dark:border-blue-800/50 animate-slide-up">
-              <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">知識を未来へ、世界へ</span>
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">知識を未来へ、世界へ</span>
             </div>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold mb-6 gradient-text animate-slide-up leading-tight">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold mb-6 gradient-text animate-slide-up leading-tight">
               動画で人々の知を
               <br />
               未来と世界へ繋ぐ
             </h1>
-            <p className="text-xl md:text-2xl lg:text-3xl text-gray-700 dark:text-gray-300 mb-12 leading-relaxed animate-slide-up max-w-3xl mx-auto" style={{ animationDelay: '0.2s' }}>
+            <p className="text-sm md:text-base lg:text-lg text-gray-700 dark:text-gray-300 mb-12 leading-relaxed animate-slide-up max-w-3xl mx-auto" style={{ animationDelay: '0.2s' }}>
               VideoStepは、熟練技術者のノウハウ継承や外国人教育を支援する
               <br className="hidden md:block" />
               次世代動画共有プラットフォームです
@@ -136,7 +136,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-slide-up" style={{ animationDelay: '0.4s' }}>
                 <Link
                   href="/auth/register"
-                  className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-110 transition-all duration-300 overflow-hidden text-lg"
+                  className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-110 transition-all duration-300 overflow-hidden text-base"
                 >
                   <span className="relative z-10 flex items-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +148,7 @@ export default function Home() {
                 </Link>
                 <Link
                   href="/auth/login"
-                  className="px-8 py-4 glass-effect text-gray-700 dark:text-gray-300 font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border-2 border-transparent hover:border-blue-500/50 dark:hover:border-blue-400/50 text-lg"
+                  className="px-8 py-4 glass-effect text-gray-700 dark:text-gray-300 font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border-2 border-transparent hover:border-blue-500/50 dark:hover:border-blue-400/50 text-base"
                 >
                   ログイン
                 </Link>
@@ -163,8 +163,8 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">スライド編集</h3>
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">直感的なスライド型動画編集機能で、誰でも簡単にプロフェッショナルな動画を作成できます</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">スライド編集</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">直感的なスライド型動画編集機能で、誰でも簡単にプロフェッショナルな動画を作成できます</p>
               </div>
               
               <div className="group glass-effect p-8 rounded-3xl card-hover border border-white/20 dark:border-gray-700/50 hover:border-purple-300/50 dark:hover:border-purple-600/50 transition-all duration-300">
@@ -173,8 +173,8 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">24言語対応</h3>
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">自動翻訳機能により、世界中の誰もがあなたの知識にアクセスできます</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">24言語対応</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">自動翻訳機能により、世界中の誰もがあなたの知識にアクセスできます</p>
               </div>
               
               <div className="group glass-effect p-8 rounded-3xl card-hover border border-white/20 dark:border-gray-700/50 hover:border-pink-300/50 dark:hover:border-pink-600/50 transition-all duration-300">
@@ -183,8 +183,8 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">知識継承</h3>
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">熟練技術者の貴重なノウハウを次世代へ、そして世界へ継承します</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">知識継承</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">熟練技術者の貴重なノウハウを次世代へ、そして世界へ継承します</p>
               </div>
             </div>
           </div>
@@ -195,10 +195,10 @@ export default function Home() {
       <section className="container mx-auto px-4 py-16 lg:py-24">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
           <div>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 dark:text-white mb-4 gradient-text">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-gray-900 dark:text-white mb-4 gradient-text">
               人気の動画
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 text-lg md:text-xl">
+            <p className="text-gray-600 dark:text-gray-400 text-base md:text-lg">
               世界中の技術者が共有する知識とノウハウ
             </p>
           </div>

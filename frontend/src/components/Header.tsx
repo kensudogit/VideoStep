@@ -76,7 +76,7 @@ export default function Header() {
               </div>
             </div>
             <div>
-              <span className="text-2xl font-extrabold gradient-text block">VideoStep</span>
+              <span className="text-xl font-extrabold gradient-text block">VideoStep</span>
               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">知識を未来へ</span>
             </div>
           </Link>

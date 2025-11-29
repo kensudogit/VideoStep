@@ -1,111 +1,112 @@
-# 現在の状況と対応方法
+# 🚨 現在の状況レポート
 
-## 📊 現在の状況
+## ログ分析結果（2025-11-26 20:42-20:45）
 
-### ✅ コードの状態
-- すべてのサービスのコードが最新バージョンに更新されています
-- `DatabaseEnvironmentPostProcessor`が正しく動作しています
-- 詳細なデバッグ情報がログに出力されています
+### ❌ 問題が継続中
 
-### ❌ 問題
-- Railwayで環境変数（`DATABASE_URL`または`SPRING_DATASOURCE_URL`）が設定されていません
-- そのため、アプリケーションが起動できません
+video-serviceが**まだ**`http://service-registry:8761`に接続しようとして失敗しています。
 
-### 📝 ログから確認できること
+### エラーの詳細
 
-ログに以下のメッセージが表示されています：
+ログから確認された主なエラー：
 
-```
-DatabaseEnvironmentPostProcessor: Starting environment post-processing
-DatabaseEnvironmentPostProcessor: Checking environment variables...
-DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL from System.getenv() = null
-DatabaseEnvironmentPostProcessor: DATABASE_URL from System.getenv() = null
-DatabaseEnvironmentPostProcessor: ERROR - Neither SPRING_DATASOURCE_URL nor DATABASE_URL is set!
-```
-
-これは、**コードは正しく動作しているが、環境変数が設定されていない**ことを示しています。
-
-## 🎯 解決方法
-
-### 最も簡単な方法：Railwayで「Connect Database」を使用
-
-1. **Railwayダッシュボードにアクセス**
-   - https://railway.app にログイン
-   - VideoStepプロジェクトを選択
-
-2. **PostgreSQLデータベースサービスを作成（まだの場合）**
-   - 「+ New」→「Database」→「PostgreSQL」を選択
-   - 作成完了を待つ
-
-3. **各サービスにデータベースを接続**
-   
-   **video-serviceの場合：**
-   - `video-service`を開く
-   - 「Variables」タブを開く
-   - 「Connect Database」ボタンをクリック
-   - PostgreSQLサービスを選択
-   - ✅ これで`DATABASE_URL`が自動的に設定されます
-   
-   **他のサービスも同様に：**
-   - `editing-service`
-   - `auth-service`
-   - `user-service`
-   - `translation-service`
-
-4. **確認**
-   - 各サービスの「Variables」タブで`DATABASE_URL`が表示されていることを確認
-   - サービスが自動的に再デプロイされます
-
-5. **ログで成功を確認**
-   - 再デプロイ後、ログで以下のメッセージが表示されることを確認：
+1. **接続エラー（繰り返し発生）**
    ```
-   DatabaseEnvironmentPostProcessor: DATABASE_URL from System.getenv() = set
-   DatabaseEnvironmentPostProcessor: Converting DATABASE_URL to JDBC format = jdbc:postgresql://...
-   DatabaseEnvironmentPostProcessor: SPRING_DATASOURCE_URL set successfully from DATABASE_URL
+   I/O error on POST request for "http://service-registry:8761/eureka/apps/VIDEO-SERVICE": service-registry
    ```
 
-## 📋 チェックリスト
+2. **登録失敗**
+   ```
+   DiscoveryClient_VIDEO-SERVICE/ced9621b758d:video-service:8082 - registration failed
+   Cannot execute request on any known server
+   ```
 
-以下の項目を確認してください：
+3. **ハートビート失敗**
+   ```
+   DiscoveryClient_VIDEO-SERVICE/ced9621b758d:video-service:8082 - was unable to send heartbeat!
+   ```
 
-- [ ] PostgreSQLデータベースサービスが作成されている
-- [ ] video-serviceにデータベースが接続されている
-- [ ] editing-serviceにデータベースが接続されている
-- [ ] auth-serviceにデータベースが接続されている
-- [ ] user-serviceにデータベースが接続されている
-- [ ] translation-serviceにデータベースが接続されている
-- [ ] 各サービスの「Variables」タブで`DATABASE_URL`が表示されている
-- [ ] すべてのサービスが再デプロイされている
-- [ ] ログに成功メッセージが表示されている
+### 原因分析
 
-## 🔍 詳細な手順
+1. **環境変数が設定されていない**
+   - Railwayダッシュボードで環境変数が設定されていない可能性
+   - または、設定したが再デプロイされていない
 
-詳細な手順については、以下のドキュメントを参照してください：
+2. **application.ymlのデフォルト値が使われている**
+   - 以前に修正したデフォルト値（`https://service-registry-production-6ee0.up.railway.app/eureka/`）が反映されていない
+   - 現在デプロイされているサービスは古いビルドを使用している可能性
 
-- **[RAILWAY_ENV_SETUP_STEP_BY_STEP.md](./RAILWAY_ENV_SETUP_STEP_BY_STEP.md)** - ステップバイステップガイド
-- **[RAILWAY_QUICK_SETUP.md](./RAILWAY_QUICK_SETUP.md)** - クイックセットアップガイド
-- **[RAILWAY_ENV_SETUP_URGENT.md](./RAILWAY_ENV_SETUP_URGENT.md)** - 緊急対応ガイド
+### ✅ 完了した作業
 
-## ⚠️ 重要な注意事項
+1. **application.ymlのデフォルト値を修正済み**
+   - `devlop/VideoStep/services/video-service/src/main/resources/application.yml`
+   - デフォルト値を`https://service-registry-production-6ee0.up.railway.app/eureka/`に変更
 
-1. **各サービスに個別にデータベースを接続する必要があります**
-   - 1つのサービスに接続しても、他のサービスには影響しません
-   - すべてのサービス（5つ）に接続してください
+2. **修正手順ドキュメントを作成済み**
+   - `RAILWAY_ENV_VARS_SETUP.md`
+   - `EXECUTE_EUREKA_FIX_NOW.md`
+   - `URGENT_FIX_EUREKA.md`
 
-2. **「Connect Database」ボタンが表示されない場合**
-   - まずPostgreSQLデータベースサービスを作成してください
-   - その後、各サービスで「Connect Database」ボタンが表示されます
+### ⚠️ 必要な対応
 
-3. **環境変数が設定されてもエラーが続く場合**
-   - サービスが再デプロイされているか確認
-   - ログで新しいデバッグ情報（`Checking environment variables...`）が表示されているか確認
-   - 環境変数の値が正しい形式（`postgresql://...`）であることを確認
+#### オプション1: Railwayダッシュボードで環境変数を設定（推奨・即効性あり）
 
-## 🎉 完了後の確認
+1. **Railwayダッシュボードを開く**
+   ```
+   https://railway.app/dashboard
+   ```
 
-すべての設定が完了したら、以下を確認してください：
+2. **video-serviceの環境変数を設定**
+   - video-serviceサービスを開く
+   - 「Variables」タブで以下を設定：
+     ```
+     EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=https://service-registry-production-6ee0.up.railway.app/eureka/
+     EUREKA_CLIENT_ENABLED=true
+     EUREKA_CLIENT_REGISTER_WITH_EUREKA=true
+     EUREKA_CLIENT_FETCH_REGISTRY=true
+     ```
 
-1. ✅ すべてのサービスのログに成功メッセージが表示されている
-2. ✅ エラーメッセージが表示されていない
-3. ✅ アプリケーションが正常に起動している
+3. **video-serviceを再デプロイ**
+   - 「Deployments」タブから「Redeploy」を実行
 
+#### オプション2: コードを再デプロイ（application.ymlの修正を反映）
+
+1. **変更をコミット・プッシュ**
+   ```bash
+   git add services/video-service/src/main/resources/application.yml
+   git commit -m "Fix Eureka default URL for Railway"
+   git push
+   ```
+
+2. **Railwayが自動デプロイを実行**
+   - GitHub連携が有効な場合、自動的に再デプロイされます
+
+### 📊 現在の状態
+
+| 項目 | 状態 |
+|------|------|
+| application.ymlの修正 | ✅ 完了 |
+| Railway環境変数の設定 | ❓ 未確認 |
+| video-serviceの再デプロイ | ❓ 未確認 |
+| Eureka接続 | ❌ 失敗中 |
+
+### 🔍 確認方法
+
+1. **Railwayダッシュボードで環境変数を確認**
+   - video-serviceの「Variables」タブを開く
+   - `EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE`が設定されているか確認
+
+2. **ログで接続URLを確認**
+   - ログに`https://service-registry-production-6ee0.up.railway.app`が表示されれば成功
+   - `http://service-registry:8761`が表示されれば失敗
+
+### 🎯 次のステップ
+
+**今すぐ実行すべきこと：**
+
+1. Railwayダッシュボードでvideo-serviceの環境変数を確認
+2. 環境変数が設定されていない場合、設定する
+3. video-serviceを再デプロイ
+4. 数分待ってからログを再確認
+
+詳細は `RAILWAY_ENV_VARS_SETUP.md` を参照してください。

@@ -1,190 +1,196 @@
-# Railway 完全公開モード デプロイ手順
+# Railway完全公開モードデプロイガイド
 
-## 概要
-
-Video ServiceをRailwayに完全公開モードでデプロイする手順です。
+このガイドでは、VideoStepプロジェクトのすべてのサービスをRailwayで完全公開モード（パブリックアクセス有効）でデプロイする手順を説明します。
 
 ## 前提条件
 
-- Railwayアカウント（https://railway.app）
-- GitHubリポジトリに最新のコードがプッシュされていること
-- PostgreSQLデータベースがRailwayに作成されていること
+- Railwayアカウントを持っていること
+- Railway CLIがインストールされていること（オプション）
+- 各サービス用のMySQLデータベースをRailwayで作成済みであること
+
+## 設定完了事項
+
+✅ すべてのサービスの`railway.toml`に`public = true`を追加済み
+- `services/api-gateway/railway.toml`
+- `services/service-registry/railway.toml`
+- `services/auth-service/railway.toml`
+- `services/video-service/railway.toml`
+- `services/translation-service/railway.toml`
+- `services/editing-service/railway.toml`
+- `services/user-service/railway.toml`
 
 ## デプロイ手順
 
-### ステップ1: Railwayダッシュボードにアクセス
+### 1. Railwayプロジェクトの作成
 
-1. https://railway.app にログイン
-2. VideoStepプロジェクトを開く（または新規作成）
+1. [Railway Dashboard](https://railway.app/dashboard)にログイン
+2. 「New Project」をクリック
+3. 「Deploy from GitHub repo」を選択（推奨）または「Empty Project」を選択
 
-### ステップ2: Video Serviceのデプロイ
+### 2. 各サービスのデプロイ
 
-#### 2.1 新しいサービスを作成（既に存在する場合はスキップ）
+各サービスを個別のRailwayサービスとしてデプロイします。
 
-1. **"New Service" をクリック**
-2. **"GitHub Repo" を選択**
-3. **VideoStepリポジトリを選択**
+#### 2.1 Service Registry (Eureka) のデプロイ
 
-#### 2.2 サービス設定
+1. Railwayプロジェクト内で「New」→「GitHub Repo」を選択
+2. VideoStepリポジトリを選択
+3. サービス名を「service-registry」に設定
+4. ルートディレクトリを`.`に設定
+5. Railwayは自動的に`services/service-registry/railway.toml`を検出します
+6. 環境変数は不要（内部サービス用）
 
-1. **"Settings" タブを開く**
+#### 2.2 API Gateway のデプロイ
 
-2. **"Source" セクション**
-   - **Root Directory**: `.` を設定（空欄のままでも可）
-
-3. **"Build" セクション**
-   - **Builder**: `Dockerfile` を選択
-   - **Dockerfile Path**: `services/video-service/Dockerfile` を設定
-   - **Build Context**: `.` を設定（ルートディレクトリ）
-
-4. **"Deploy" セクション**
-   - **Start Command**: `java -jar app.jar` を設定
-   - **Healthcheck Path**: `/actuator/health` を設定
-
-#### 2.3 環境変数の設定
-
-1. **"Variables" タブを開く**
-
-2. **以下の環境変数を追加**:
-
+1. 同じプロジェクト内で「New」→「GitHub Repo」を選択
+2. 同じリポジトリを選択
+3. サービス名を「api-gateway」に設定
+4. ルートディレクトリを`.`に設定
+5. 環境変数を設定：
    ```
-   SPRING_DATASOURCE_URL=${{videostep-video-db.DATABASE_URL}}
-   DATABASE_URL=${{videostep-video-db.DATABASE_URL}}
-   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://videostep:8761/eureka/
+   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=https://service-registry-production.up.railway.app/eureka/
+   ```
+   （Service RegistryのパブリックURLを使用）
+
+#### 2.3 Auth Service のデプロイ
+
+1. 「New」→「GitHub Repo」を選択
+2. サービス名を「auth-service」に設定
+3. ルートディレクトリを`.`に設定
+4. 環境変数を設定：
+   ```
+   SPRING_DATASOURCE_URL=jdbc:mysql://[MySQLホスト]:3306/videostep_auth?useSSL=true&allowPublicKeyRetrieval=true
+   SPRING_DATASOURCE_USERNAME=[MySQLユーザー名]
+   SPRING_DATASOURCE_PASSWORD=[MySQLパスワード]
+   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=https://service-registry-production.up.railway.app/eureka/
+   OPENAI_API_KEY=[あなたのOpenAI APIキー]
    ```
 
-   **重要**:
-   - `${{videostep-video-db.DATABASE_URL}}` は、作成したPostgreSQLデータベースのサービス名を使用
-   - サービス名が異なる場合は、適切なサービス名に置き換えてください
-   - `DATABASE_URL` も設定することで、`DatabaseEnvironmentPostProcessor`が正しく認証情報を抽出できます
+#### 2.4 Video Service のデプロイ
 
-3. **"Save" をクリック**
+1. 「New」→「GitHub Repo」を選択
+2. サービス名を「video-service」に設定
+3. ルートディレクトリを`.`に設定
+4. 環境変数を設定：
+   ```
+   SPRING_DATASOURCE_URL=jdbc:mysql://[MySQLホスト]:3306/videostep_video?useSSL=true&allowPublicKeyRetrieval=true
+   SPRING_DATASOURCE_USERNAME=[MySQLユーザー名]
+   SPRING_DATASOURCE_PASSWORD=[MySQLパスワード]
+   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=https://service-registry-production.up.railway.app/eureka/
+   OPENAI_API_KEY=[あなたのOpenAI APIキー]
+   ```
 
-#### 2.4 デプロイの実行
+#### 2.5 Translation Service のデプロイ
 
-1. **"Deployments" タブを開く**
-2. **"Redeploy" をクリック**（既にデプロイされている場合）
-   - または、GitHubにプッシュすると自動的にデプロイが開始されます
-3. **ビルドログを確認**
-   - エラーがないか確認
-   - ビルドが成功することを確認
-   - データベース接続が成功することを確認
+1. 「New」→「GitHub Repo」を選択
+2. サービス名を「translation-service」に設定
+3. ルートディレクトリを`.`に設定
+4. 環境変数を設定：
+   ```
+   SPRING_DATASOURCE_URL=jdbc:mysql://[MySQLホスト]:3306/videostep_translation?useSSL=true&allowPublicKeyRetrieval=true
+   SPRING_DATASOURCE_USERNAME=[MySQLユーザー名]
+   SPRING_DATASOURCE_PASSWORD=[MySQLパスワード]
+   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=https://service-registry-production.up.railway.app/eureka/
+   OPENAI_API_KEY=[あなたのOpenAI APIキー]
+   ```
 
-### ステップ3: 完全公開モードの設定（公開URLの生成）
+#### 2.6 Editing Service のデプロイ
 
-1. **"Settings" タブを開く**
+1. 「New」→「GitHub Repo」を選択
+2. サービス名を「editing-service」に設定
+3. ルートディレクトリを`.`に設定
+4. 環境変数を設定：
+   ```
+   SPRING_DATASOURCE_URL=jdbc:mysql://[MySQLホスト]:3306/videostep_editing?useSSL=true&allowPublicKeyRetrieval=true
+   SPRING_DATASOURCE_USERNAME=[MySQLユーザー名]
+   SPRING_DATASOURCE_PASSWORD=[MySQLパスワード]
+   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=https://service-registry-production.up.railway.app/eureka/
+   OPENAI_API_KEY=[あなたのOpenAI APIキー]
+   ```
 
-2. **"Networking" セクションに移動**
+#### 2.7 User Service のデプロイ
 
-3. **"Generate Domain" をクリック**
-   - これにより、公開URLが生成されます
-   - 例: `https://video-service-production.up.railway.app`
+1. 「New」→「GitHub Repo」を選択
+2. サービス名を「user-service」に設定
+3. ルートディレクトリを`.`に設定
+4. 環境変数を設定：
+   ```
+   SPRING_DATASOURCE_URL=jdbc:mysql://[MySQLホスト]:3306/videostep_user?useSSL=true&allowPublicKeyRetrieval=true
+   SPRING_DATASOURCE_USERNAME=[MySQLユーザー名]
+   SPRING_DATASOURCE_PASSWORD=[MySQLパスワード]
+   EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=https://service-registry-production.up.railway.app/eureka/
+   OPENAI_API_KEY=[あなたのOpenAI APIキー]
+   ```
 
-4. **公開URLをコピー**
-   - 後で使用するため、URLを保存してください
+### 3. MySQLデータベースのセットアップ
 
-5. **"Public Networking" が有効になっていることを確認**
-   - デフォルトで有効になっているはずです
+各サービス用にMySQLデータベースをRailwayで作成：
 
-### ステップ4: デプロイの確認
+1. Railwayプロジェクト内で「New」→「Database」→「Add MySQL」を選択
+2. データベース名を設定（例：`videostep_auth`）
+3. 接続情報をコピーして、対応するサービスの環境変数に設定
 
-#### 4.1 Health Check
+### 4. パブリックアクセスの確認
 
-以下のURLにアクセスして、サービスが正常に動作していることを確認：
+各サービスのデプロイ後：
 
-```
-https://<your-video-service-url>/actuator/health
-```
+1. Railwayダッシュボードで各サービスを開く
+2. 「Settings」タブを開く
+3. 「Networking」セクションで「Generate Domain」をクリック
+4. パブリックURLが生成されることを確認
+5. ブラウザで`https://[サービス名]-production.up.railway.app/actuator/health`にアクセスして動作確認
 
-正常な場合、以下のようなJSONが返されます：
+### 5. デプロイ順序
 
-```json
-{
-  "status": "UP"
-}
-```
+推奨デプロイ順序：
 
-#### 4.2 API エンドポイントの確認
-
-以下のURLにアクセスして、APIが正常に動作していることを確認：
-
-```
-https://<your-video-service-url>/api/videos/public
-```
-
-#### 4.3 ログの確認
-
-1. **"Deployments" タブを開く**
-2. **最新のデプロイメントをクリック**
-3. **"Logs" タブを開く**
-4. **以下のログが表示されることを確認**:
-   - `DatabaseEnvironmentPostProcessor: Using SPRING_DATASOURCE_URL from environment variable`
-   - `DatabaseEnvironmentPostProcessor: Credentials extracted from DATABASE_URL`（認証情報が抽出された場合）
-   - `Started VideoServiceApplication`（アプリケーションが正常に起動した場合）
-   - データベース接続エラーがないことを確認
+1. **Service Registry** - 最初にデプロイ（他のサービスが依存）
+2. **MySQL Databases** - データベースを事前に作成
+3. **Auth Service** - 認証サービス
+4. **User Service** - ユーザーサービス
+5. **Video Service** - 動画サービス
+6. **Translation Service** - 翻訳サービス
+7. **Editing Service** - 編集サービス
+8. **API Gateway** - 最後にデプロイ（すべてのサービスが登録された後）
 
 ## トラブルシューティング
 
-### データベース接続エラーが発生する場合
+### サービスが起動しない
 
-1. **環境変数を確認**
-   - `SPRING_DATASOURCE_URL` と `DATABASE_URL` の両方が設定されているか確認
-   - データベースサービス名が正しいか確認
+- ログを確認：Railwayダッシュボードの「Deployments」タブでログを確認
+- 環境変数が正しく設定されているか確認
+- Service RegistryのURLが正しいか確認（`https://`を使用）
 
-2. **ログを確認**
-   - `DatabaseEnvironmentPostProcessor` のログを確認
-   - 認証情報が正しく抽出されているか確認
+### Eureka接続エラー
 
-3. **データベースが作成されているか確認**
-   - Railwayダッシュボードでデータベースサービスが存在するか確認
-   - データベースの接続情報が正しいか確認
+- Service Registryが先にデプロイされているか確認
+- `EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE`が正しいパブリックURLを指しているか確認
+- Service RegistryのパブリックURLは`https://service-registry-production.up.railway.app/eureka/`形式
 
-### ビルドエラーが発生する場合
+### データベース接続エラー
 
-1. **Dockerfileのパスを確認**
-   - `services/video-service/Dockerfile` が正しいか確認
+- MySQLデータベースが作成されているか確認
+- 接続URL、ユーザー名、パスワードが正しいか確認
+- `useSSL=true`を使用（RailwayのMySQLはSSL必須）
 
-2. **Build Contextを確認**
-   - Build Contextが `.`（ルートディレクトリ）に設定されているか確認
+### パブリックアクセスできない
 
-3. **ビルドログを確認**
-   - エラーメッセージを確認
-   - 依存関係の問題がないか確認
+- `railway.toml`に`public = true`が設定されているか確認
+- Railwayダッシュボードで「Generate Domain」を実行しているか確認
+- サービスが正常に起動しているか確認
 
-### 公開URLにアクセスできない場合
+## 確認事項
 
-1. **"Networking" 設定を確認**
-   - "Generate Domain" が実行されているか確認
-   - "Public Networking" が有効になっているか確認
+デプロイ完了後、以下を確認：
 
-2. **デプロイが完了しているか確認**
-   - デプロイが正常に完了しているか確認
-   - サービスが起動しているか確認
-
-3. **Health Checkを確認**
-   - `/actuator/health` エンドポイントが正常に動作しているか確認
-
-## チェックリスト
-
-- [ ] PostgreSQLデータベースが作成されている
-- [ ] Video ServiceがRailwayにデプロイされている
-- [ ] 環境変数が正しく設定されている（`SPRING_DATASOURCE_URL` と `DATABASE_URL`）
-- [ ] デプロイが正常に完了している
-- [ ] 公開URLが生成されている
-- [ ] Health Checkが正常である
-- [ ] APIエンドポイントが正常に動作している
-- [ ] ログにエラーがない
+- [ ] すべてのサービスが正常に起動している
+- [ ] 各サービスのパブリックURLが生成されている
+- [ ] Service Registryで各サービスが登録されている
+- [ ] API Gatewayから各サービスにアクセスできる
+- [ ] ヘルスチェックエンドポイント（`/actuator/health`）が応答している
 
 ## 次のステップ
 
-1. **API Gatewayの設定**
-   - API Gatewayの環境変数に、Video Serviceの公開URLを設定
-   - または、Eurekaサービスレジストリを使用してサービスを発見
-
-2. **フロントエンドの設定**
-   - Vercelダッシュボードで `NEXT_PUBLIC_API_BASE_URL` を設定
-   - API Gatewayの公開URLを設定
-
-3. **その他のサービスのデプロイ**
-   - 必要に応じて、他のサービスも同様の手順でデプロイ
-
+- フロントエンドアプリケーションからAPI GatewayのパブリックURLを使用
+- カスタムドメインの設定（オプション）
+- モニタリングとログの設定

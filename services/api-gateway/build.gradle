@@ -10,7 +10,8 @@ java {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
+    // Spring Cloud Gatewayはリアクティブなアプリケーションなので、spring-boot-starter-webは不要
+    // implementation 'org.springframework.boot:spring-boot-starter-web' // Spring Cloud Gatewayと競合するため削除
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-gateway'

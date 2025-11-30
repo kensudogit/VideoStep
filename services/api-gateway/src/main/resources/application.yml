@@ -10,6 +10,13 @@ spring:
   cloud:
     gateway:
       routes:
+        # faviconリクエストを404で返す（無視）
+        - id: favicon-ignore
+          uri: http://localhost:8080
+          predicates:
+            - Path=/favicon.ico
+          filters:
+            - SetStatus=404
         - id: auth-service
           uri: lb://auth-service
           predicates:

@@ -13,19 +13,18 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
-    
+
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
-            .csrf(csrf -> csrf.disable())
-            .authorizeExchange(exchanges -> exchanges
-                // 認証不要のエンドポイント
-                .pathMatchers("/favicon.ico", "/actuator/**").permitAll()
-                // その他のエンドポイントは認証が必要
-                .anyExchange().authenticated()
-            )
-            .httpBasic(httpBasic -> {})
-            .build();
+                .csrf(csrf -> csrf.disable())
+                .authorizeExchange(exchanges -> exchanges
+                        // 認証不要のエンドポイント
+                        .pathMatchers("/favicon.ico", "/actuator/**").permitAll()
+                        // その他のエンドポイントは認証が必要
+                        .anyExchange().authenticated())
+                .httpBasic(httpBasic -> {
+                })
+                .build();
     }
 }
-

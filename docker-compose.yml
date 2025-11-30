@@ -127,7 +127,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-auth:3306/videostep_auth?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - OPENAI_API_KEY=${OPENAI_API_KEY}  
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}  
     networks:
       - videostep-network
 
@@ -145,7 +145,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-video:3306/videostep_video?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - OPENAI_API_KEY=${OPENAI_API_KEY}  
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}  
     networks:
       - videostep-network
 
@@ -163,7 +163,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-translation:3306/videostep_translation?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - OPENAI_API_KEY=${OPENAI_API_KEY}  
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}  
     networks:
       - videostep-network
 
@@ -181,7 +181,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-editing:3306/videostep_editing?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - OPENAI_API_KEY=${OPENAI_API_KEY}  
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}  
     networks:
       - videostep-network
 
@@ -199,7 +199,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-user:3306/videostep_user?useSSL=false&allowPublicKeyRetrieval=true
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - OPENAI_API_KEY=${OPENAI_API_KEY}  
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}  
     networks:
       - videostep-network
 

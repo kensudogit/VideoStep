@@ -55,10 +55,14 @@ out/
 dist/
 
 # Environment variables
+# .envファイルは機密情報を含むため、Gitにコミットしない
 .env
 .env.local
 .env*.local
+.env.*
+!.env.example
+!.env.template
 
-
+# Vercel
 .vercel
 .env*.local

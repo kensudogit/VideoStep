@@ -47,7 +47,23 @@ spring:
 
 ## 修正後の実行手順
 
-### クイックスタート
+### 方法1: バッチファイルで自動実行（推奨）
+
+```cmd
+cd C:\devlop\VideoStep
+EXECUTE_API_GATEWAY_FIX.bat
+```
+
+このバッチファイルが以下を自動実行します：
+1. 既存のAPI Gatewayコンテナを削除
+2. API Gatewayを再ビルド
+3. Service Registryの状態を確認・起動
+4. API Gatewayを起動
+5. 起動確認
+
+### 方法2: 手動で実行
+
+#### PowerShell版
 
 ```powershell
 cd C:\devlop\VideoStep
@@ -66,6 +82,30 @@ docker-compose up -d api-gateway
 
 # 5. ログを確認（10秒待ってから）
 Start-Sleep -Seconds 10
+docker logs videostep-api-gateway --tail 50
+```
+
+#### CMD版
+
+```cmd
+cd C:\devlop\VideoStep
+
+REM 1. 既存のコンテナを削除
+docker-compose rm -f api-gateway
+
+REM 2. 再ビルド
+docker-compose build api-gateway
+
+REM 3. Service Registryが起動しているか確認
+docker ps | findstr service-registry
+
+REM 4. API Gatewayを起動
+docker-compose up -d api-gateway
+
+REM 5. 10秒待機
+timeout /t 10
+
+REM 6. ログを確認
 docker logs videostep-api-gateway --tail 50
 ```
 

@@ -46,24 +46,19 @@ spring:
 
 ## 修正後の起動手順
 
-### ステップ1: 変更をコミット
+### ステップ1: 変更をコミット（オプション）
 
 ```bash
 cd C:\devlop\VideoStep
-git add services/api-gateway/build.gradle services/api-gateway/src/main/resources/application.yml
+git add services/api-gateway/build.gradle services/api-gateway/src/main/resources/application.yml FIX_API_GATEWAY_SPRING_MVC_ERROR.md
 git commit -m "fix: Remove spring-boot-starter-web from API Gateway to fix Spring MVC conflict"
 git push origin main
 ```
 
-### ステップ2: API Gatewayコンテナを停止
+### ステップ2: 既存のAPI Gatewayコンテナを削除
 
 ```bash
-docker-compose stop api-gateway
-```
-
-または、既に停止している場合は：
-
-```bash
+cd C:\devlop\VideoStep
 docker-compose rm -f api-gateway
 ```
 
@@ -73,23 +68,84 @@ docker-compose rm -f api-gateway
 docker-compose build api-gateway
 ```
 
-### ステップ4: API Gatewayを起動
+**注意**: ビルドには数分かかる場合があります。
+
+### ステップ4: Service Registryが起動しているか確認
+
+API GatewayはService Registryに依存しているため、先に起動する必要があります：
+
+```bash
+# Service Registryの状態を確認
+docker ps | findstr service-registry
+
+# 起動していない場合は起動
+docker-compose up -d service-registry
+
+# 少し待ってから（10-20秒）API Gatewayを起動
+timeout /t 15
+```
+
+### ステップ5: API Gatewayを起動
 
 ```bash
 docker-compose up -d api-gateway
 ```
 
-### ステップ5: 起動を確認
+### ステップ6: 起動を確認
 
 ```bash
-# コンテナの状態を確認
+# コンテナの状態を確認（STATUSが"Up"になっているか確認）
 docker ps | findstr api-gateway
+
+# ログを確認（"Started ApiGatewayApplication"というメッセージを探す）
+docker logs videostep-api-gateway --tail 50
+
+# ヘルスチェック（PowerShellの場合）
+Invoke-WebRequest -Uri http://localhost:8080/actuator/health
+
+# またはブラウザで以下にアクセス
+# http://localhost:8080/actuator/health
+```
+
+### ステップ7: ブラウザで確認
+
+ブラウザで以下にアクセスして、正常に動作しているか確認：
+
+```
+http://localhost:8080/actuator/health
+```
+
+**期待される結果**:
+```json
+{
+  "status": "UP"
+}
+```
+
+## 一括実行コマンド（PowerShell）
+
+以下のコマンドを順番に実行：
+
+```powershell
+cd C:\devlop\VideoStep
+
+# 既存のコンテナを削除
+docker-compose rm -f api-gateway
+
+# 再ビルド
+docker-compose build api-gateway
+
+# Service Registryが起動しているか確認
+docker ps | findstr service-registry
+
+# API Gatewayを起動
+docker-compose up -d api-gateway
+
+# 10秒待つ
+Start-Sleep -Seconds 10
 
 # ログを確認
 docker logs videostep-api-gateway --tail 50
-
-# ヘルスチェック
-curl http://localhost:8080/actuator/health
 ```
 
 ## 期待される結果

@@ -276,7 +276,48 @@ function getMockResponse<T>(endpoint: string): ApiResponse<T> {
     }
   }
 
-  // Recommendations
+  // Recommendations - popular
+  if (endpoint.includes('/api/videos/recommendations/popular')) {
+    const limit = parseInt(new URLSearchParams(endpoint.split('?')[1] || '').get('limit') || '10')
+    // 視聴回数が多い順にソート
+    const sortedVideos = [...mockVideos].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+    const videos = sortedVideos.slice(0, limit)
+    console.log(`Returning ${videos.length} popular mock videos`)
+    return {
+      success: true,
+      data: videos as T,
+    }
+  }
+
+  // Recommendations - latest
+  if (endpoint.includes('/api/videos/recommendations/latest')) {
+    const limit = parseInt(new URLSearchParams(endpoint.split('?')[1] || '').get('limit') || '10')
+    // 作成日時が新しい順にソート
+    const sortedVideos = [...mockVideos].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    const videos = sortedVideos.slice(0, limit)
+    console.log(`Returning ${videos.length} latest mock videos`)
+    return {
+      success: true,
+      data: videos as T,
+    }
+  }
+
+  // Recommendations - category
+  if (endpoint.includes('/api/videos/recommendations/category/')) {
+    const category = decodeURIComponent(endpoint.split('/category/')[1]?.split('?')[0] || '')
+    const limit = parseInt(new URLSearchParams(endpoint.split('?')[1] || '').get('limit') || '10')
+    const filteredVideos = mockVideos.filter(v => v.category === category)
+    const videos = filteredVideos.slice(0, limit)
+    console.log(`Returning ${videos.length} category recommendations for "${category}"`)
+    return {
+      success: true,
+      data: videos as T,
+    }
+  }
+
+  // Recommendations - general
   if (endpoint.includes('/api/videos/recommendations')) {
     const limit = parseInt(new URLSearchParams(endpoint.split('?')[1] || '').get('limit') || '10')
     const videos = mockVideos.slice(0, limit)
@@ -381,6 +422,220 @@ export async function uploadFile(
     xhr.setRequestHeader('Authorization', `Bearer ${token}`)
     xhr.setRequestHeader('X-User-Id', userId.toString())
     xhr.send(formData)
+  })
+}
+
+// Video Service API Functions
+
+/**
+ * 公開動画一覧を取得
+ */
+export async function getPublicVideos(page: number = 0, size: number = 12): Promise<ApiResponse<any[]>> {
+  return apiRequest<any[]>(`/api/videos/public?page=${page}&size=${size}`)
+}
+
+/**
+ * 動画詳細を取得
+ */
+export async function getVideoById(videoId: number): Promise<ApiResponse<any>> {
+  return apiRequest<any>(`/api/videos/${videoId}`)
+}
+
+/**
+ * ユーザーの動画一覧を取得
+ */
+export async function getUserVideos(userId: number, page: number = 0, size: number = 12, token?: string): Promise<ApiResponse<any[]>> {
+  const endpoint = `/api/videos/user/${userId}?page=${page}&size=${size}`
+  if (token) {
+    const authStore = useAuthStore.getState()
+    return apiRequestWithAuth<any[]>(endpoint, token, authStore.userId || userId)
+  }
+  return apiRequest<any[]>(endpoint)
+}
+
+/**
+ * 動画を検索
+ */
+export async function searchVideos(keyword: string, page: number = 0, size: number = 12): Promise<ApiResponse<any[]>> {
+  return apiRequest<any[]>(`/api/videos/search?keyword=${encodeURIComponent(keyword)}&page=${page}&size=${size}`)
+}
+
+/**
+ * カテゴリ別動画を取得
+ */
+export async function getVideosByCategory(category: string, page: number = 0, size: number = 12): Promise<ApiResponse<any[]>> {
+  return apiRequest<any[]>(`/api/videos/category/${encodeURIComponent(category)}?page=${page}&size=${size}`)
+}
+
+/**
+ * 人気動画を取得
+ */
+export async function getPopularVideos(limit: number = 10): Promise<ApiResponse<any[]>> {
+  return apiRequest<any[]>(`/api/videos/recommendations/popular?limit=${limit}`)
+}
+
+/**
+ * 最新動画を取得
+ */
+export async function getLatestVideos(limit: number = 10): Promise<ApiResponse<any[]>> {
+  return apiRequest<any[]>(`/api/videos/recommendations/latest?limit=${limit}`)
+}
+
+/**
+ * カテゴリ別おすすめ動画を取得
+ */
+export async function getCategoryRecommendations(category: string, limit: number = 10): Promise<ApiResponse<any[]>> {
+  return apiRequest<any[]>(`/api/videos/recommendations/category/${encodeURIComponent(category)}?limit=${limit}`)
+}
+
+/**
+ * 関連動画を取得
+ */
+export async function getRelatedVideos(videoId: number, limit: number = 6): Promise<ApiResponse<any[]>> {
+  return apiRequest<any[]>(`/api/videos/recommendations/related/${videoId}?limit=${limit}`)
+}
+
+/**
+ * 動画にいいねする/いいねを解除
+ */
+export async function toggleLike(videoId: number, token: string, userId: number): Promise<ApiResponse<any>> {
+  return apiRequestWithAuth<any>(`/api/videos/${videoId}/like`, token, userId, { method: 'POST' })
+}
+
+/**
+ * 動画のいいね状態を取得
+ */
+export async function getLikeStatus(videoId: number, token: string, userId: number): Promise<ApiResponse<any>> {
+  return apiRequestWithAuth<any>(`/api/videos/${videoId}/like`, token, userId)
+}
+
+/**
+ * コメントを投稿
+ */
+export async function createComment(videoId: number, content: string, token: string, userId: number): Promise<ApiResponse<any>> {
+  return apiRequestWithAuth<any>(`/api/videos/${videoId}/comments`, token, userId, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  })
+}
+
+/**
+ * コメント一覧を取得
+ */
+export async function getComments(videoId: number): Promise<ApiResponse<any[]>> {
+  return apiRequest<any[]>(`/api/videos/${videoId}/comments`)
+}
+
+/**
+ * お気に入りに追加/削除
+ */
+export async function toggleFavorite(videoId: number, token: string, userId: number): Promise<ApiResponse<any>> {
+  return apiRequestWithAuth<any>(`/api/videos/${videoId}/favorite`, token, userId, { method: 'POST' })
+}
+
+/**
+ * お気に入り状態を取得
+ */
+export async function getFavoriteStatus(videoId: number, token: string, userId: number): Promise<ApiResponse<any>> {
+  return apiRequestWithAuth<any>(`/api/videos/${videoId}/favorite`, token, userId)
+}
+
+/**
+ * お気に入り一覧を取得
+ */
+export async function getFavorites(token: string, userId: number): Promise<ApiResponse<any[]>> {
+  return apiRequestWithAuth<any[]>(`/api/videos/favorites`, token, userId)
+}
+
+// Playlist API Functions
+
+/**
+ * プレイリスト一覧を取得
+ */
+export async function getPlaylists(token: string, userId: number): Promise<ApiResponse<any[]>> {
+  return apiRequestWithAuth<any[]>(`/api/playlists`, token, userId)
+}
+
+/**
+ * プレイリスト詳細を取得
+ */
+export async function getPlaylistById(playlistId: number, token?: string, userId?: number): Promise<ApiResponse<any>> {
+  if (token && userId) {
+    return apiRequestWithAuth<any>(`/api/playlists/${playlistId}`, token, userId)
+  }
+  return apiRequest<any>(`/api/playlists/${playlistId}`)
+}
+
+/**
+ * 公開プレイリスト一覧を取得
+ */
+export async function getPublicPlaylists(page: number = 0, size: number = 12): Promise<ApiResponse<any[]>> {
+  return apiRequest<any[]>(`/api/playlists/public?page=${page}&size=${size}`)
+}
+
+/**
+ * プレイリストを作成
+ */
+export async function createPlaylist(name: string, description: string, isPublic: boolean, token: string, userId: number): Promise<ApiResponse<any>> {
+  return apiRequestWithAuth<any>(`/api/playlists`, token, userId, {
+    method: 'POST',
+    body: JSON.stringify({ name, description, isPublic }),
+  })
+}
+
+/**
+ * プレイリストに動画を追加
+ */
+export async function addVideoToPlaylist(playlistId: number, videoId: number, token: string, userId: number): Promise<ApiResponse<any>> {
+  return apiRequestWithAuth<any>(`/api/playlists/${playlistId}/videos/${videoId}`, token, userId, { method: 'POST' })
+}
+
+// Notification API Functions
+
+/**
+ * 通知一覧を取得
+ */
+export async function getNotifications(token: string, userId: number): Promise<ApiResponse<any[]>> {
+  return apiRequestWithAuth<any[]>(`/api/notifications`, token, userId)
+}
+
+/**
+ * 未読通知を取得
+ */
+export async function getUnreadNotifications(token: string, userId: number): Promise<ApiResponse<any[]>> {
+  return apiRequestWithAuth<any[]>(`/api/notifications/unread`, token, userId)
+}
+
+/**
+ * 未読通知数を取得
+ */
+export async function getUnreadNotificationCount(token: string, userId: number): Promise<ApiResponse<{ unreadCount: number }>> {
+  return apiRequestWithAuth<{ unreadCount: number }>(`/api/notifications/count`, token, userId)
+}
+
+// Watch History API Functions
+
+/**
+ * 視聴履歴を取得
+ */
+export async function getWatchHistory(token: string, userId: number): Promise<ApiResponse<any[]>> {
+  return apiRequestWithAuth<any[]>(`/api/videos/history`, token, userId)
+}
+
+/**
+ * 視聴位置を取得
+ */
+export async function getWatchPosition(videoId: number, token: string, userId: number): Promise<ApiResponse<{ position: number }>> {
+  return apiRequestWithAuth<{ position: number }>(`/api/videos/history/${videoId}/position`, token, userId)
+}
+
+/**
+ * 視聴履歴を記録
+ */
+export async function recordWatch(videoId: number, position: number, token: string, userId: number): Promise<ApiResponse<any>> {
+  return apiRequestWithAuth<any>(`/api/videos/history/${videoId}`, token, userId, {
+    method: 'POST',
+    body: JSON.stringify({ position }),
   })
 }
 

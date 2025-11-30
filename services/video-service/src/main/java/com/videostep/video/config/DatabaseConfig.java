@@ -563,10 +563,13 @@ public class DatabaseConfig {
             return new HikariDataSource(config);
         }
 
-        // JDBC URLが設定されていない場合は、デフォルトのDataSourcePropertiesを使用
-        // これは通常、ローカル開発環境の場合
-        System.out.println("DatabaseConfig: Using default DataSourceProperties");
-        return properties.initializeDataSourceBuilder().build();
+        // JDBC URLが設定されていない場合は、H2フォールバック（mockデータ）を使用
+        System.err.println("DatabaseConfig: WARNING - JDBC URL is not configured");
+        System.err.println("DatabaseConfig: FALLBACK - Using H2 in-memory database (mock data)");
+        System.out.println("DatabaseConfig: Database connection information is not configured.");
+        System.out.println("DatabaseConfig: Application will start with H2 in-memory database (mock data)");
+        System.out.println("DatabaseConfig: This is a fallback mode for development/testing");
+        return createH2DataSource();
     }
 
     /**

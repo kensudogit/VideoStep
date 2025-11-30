@@ -319,12 +319,17 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
         } else {
             // どちらも設定されていない場合
             System.err.println(
-                    "DatabaseEnvironmentPostProcessor: ERROR - Neither SPRING_DATASOURCE_URL nor DATABASE_URL is set!");
+                    "DatabaseEnvironmentPostProcessor: WARNING - Neither SPRING_DATASOURCE_URL nor DATABASE_URL is set!");
             System.err.println("DatabaseEnvironmentPostProcessor: =========================================");
-            System.err.println("DatabaseEnvironmentPostProcessor: RAILWAY SETUP REQUIRED:");
+            System.err.println("DatabaseEnvironmentPostProcessor: DATABASE CONNECTION NOT CONFIGURED:");
             System.err.println("DatabaseEnvironmentPostProcessor: =========================================");
             System.err.println(
-                    "DatabaseEnvironmentPostProcessor: Please set one of the following environment variables in Railway:");
+                    "DatabaseEnvironmentPostProcessor: Database connection information is not configured.");
+            System.err.println("DatabaseEnvironmentPostProcessor: ");
+            System.err.println("DatabaseEnvironmentPostProcessor: FALLBACK MODE:");
+            System.err.println("DatabaseEnvironmentPostProcessor:   - Application will start with H2 in-memory database (mock data)");
+            System.err.println("DatabaseEnvironmentPostProcessor:   - This is a fallback mode for development/testing");
+            System.err.println("DatabaseEnvironmentPostProcessor:   - For production, please configure database connection:");
             System.err.println("DatabaseEnvironmentPostProcessor: ");
             System.err.println("DatabaseEnvironmentPostProcessor: Method 1 (Recommended): Connect Database");
             System.err.println("DatabaseEnvironmentPostProcessor:   1. Open your service in Railway dashboard");
@@ -342,8 +347,10 @@ public class DatabaseEnvironmentPostProcessor implements EnvironmentPostProcesso
             System.err.println(
                     "DatabaseEnvironmentPostProcessor:   4. Add variable: DATABASE_URL=mysql://user:password@host:port/database");
             System.err.println("DatabaseEnvironmentPostProcessor: =========================================");
-            throw new IllegalStateException(
-                    "SPRING_DATASOURCE_URL or DATABASE_URL must be set in Railway environment variables. See logs above for setup instructions.");
+            System.err.println("DatabaseEnvironmentPostProcessor: Continuing with H2 fallback (mock data)...");
+            System.out.println("DatabaseEnvironmentPostProcessor: Application will use H2 in-memory database (mock data)");
+            // データベース接続情報が設定されていない場合でも、H2フォールバックを使用して起動を続行
+            // DatabaseConfigクラスがH2フォールバックを処理するため、ここでは例外をスローしない
         }
     }
 

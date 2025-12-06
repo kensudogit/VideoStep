@@ -52,8 +52,7 @@
                   │ (デフォルト: http://localhost:8080)
                   ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  API Gateway (Spring Cloud Gateway)                        │
-│  http://localhost:8080                                      │
+│                          │
 │                                                             │
 │  /api/videos/** → Video Service                            │
 │  /api/playlists/** → Video Service                         │

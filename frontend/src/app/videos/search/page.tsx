@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import VideoList from '@/components/VideoList'
 import Header from '@/components/Header'
@@ -21,7 +21,7 @@ interface Video {
   category?: string
 }
 
-export default function VideoSearchPage() {
+function VideoSearchContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const keyword = searchParams.get('keyword') || ''
@@ -197,6 +197,28 @@ export default function VideoSearchPage() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function VideoSearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center py-20">
+            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full flex items-center justify-center animate-pulse">
+              <svg className="w-12 h-12 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">読み込み中...</h3>
+          </div>
+        </main>
+      </div>
+    }>
+      <VideoSearchContent />
+    </Suspense>
   )
 }
 
